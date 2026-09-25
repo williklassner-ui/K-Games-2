@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4f46e5" />
+      <stop offset="50%" stop-color="#3730a3" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+    <linearGradient id="diceGrad512" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+  </defs>
+  <!-- Background Card with rounded corners -->
+  <rect width="512" height="512" rx="110" fill="url(#bg512)" stroke="#6366f1" stroke-width="8" />
+  
+  <!-- Subtle Glow -->
+  <circle cx="256" cy="256" r="180" fill="#6366f1" opacity="0.25" />
+
+  <!-- Gamepad Body -->
+  <path d="M128 240 C128 196 164 164 212 164 L300 164 C348 164 384 196 384 240 C384 310 362 356 324 356 C304 356 288 330 256 330 C224 330 208 356 188 356 C150 356 128 310 128 240 Z" fill="#0f172a" stroke="#818cf8" stroke-width="10" />
+  
+  <!-- D-Pad Left -->
+  <path d="M180 224 L196 224 L196 208 L212 208 L212 224 L228 224 L228 240 L212 240 L212 256 L196 256 L196 240 L180 240 Z" fill="#38bdf8" />
+  
+  <!-- Action Buttons Right -->
+  <circle cx="324" cy="214" r="12" fill="#f43f5e" />
+  <circle cx="302" cy="236" r="12" fill="#eab308" />
+  <circle cx="346" cy="236" r="12" fill="#10b981" />
+  <circle cx="324" cy="258" r="12" fill="#3b82f6" />
+
+  <!-- Center Die Icon -->
+  <rect x="230" y="214" width="52" height="52" rx="10" fill="url(#diceGrad512)" stroke="#ffffff" stroke-width="3.5" />
+  <circle cx="242" cy="226" r="3.5" fill="#1e1b4b" />
+  <circle cx="270" cy="226" r="3.5" fill="#1e1b4b" />
+  <circle cx="256" cy="240" r="3.5" fill="#1e1b4b" />
+  <circle cx="242" cy="254" r="3.5" fill="#1e1b4b" />
+  <circle cx="270" cy="254" r="3.5" fill="#1e1b4b" />
+</svg>
