@@ -13,6 +13,7 @@ var piece_nodes: Dictionary = {}
 var selected_pos = null
 var current_turn = "w"
 var move_count = 0
+var is_bot_opponent = true
 
 # Material-Caches
 var white_mat: StandardMaterial3D
@@ -312,8 +313,8 @@ func execute_move(from: Vector2i, to: Vector2i):
 	var turn_str = "Weiß" if current_turn == "w" else "Schwarz"
 	emit_signal("status_changed", "Zug ausgeführt! " + turn_str + " ist am Zug.")
 
-	# Wenn Schwarz am Zug ist: automatische KI-Antwort nach kurzer Bedenkzeit
-	if current_turn == "b":
+	# Wenn Schwarz am Zug ist: automatische KI-Antwort nach kurzer Bedenkzeit falls Bot aktiviert
+	if current_turn == "b" and is_bot_opponent:
 		get_tree().create_timer(0.6).timeout.connect(ai_make_move)
 
 func ai_make_move():

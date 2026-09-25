@@ -7,7 +7,7 @@ config_version=5
 [application]
 
 config/name="K-Games 2"
-config/version="0.008"
+config/version="0.009"
 config/description="K-Games 2: Native 3D Vulkan Game Engine Suite featuring Civilization, Risk, Battleship, Chess, Monopoly, Katan, Kniffel and classic 3D tabletop games."
 run/main_scene="res://scenes/MainDashboard.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")

@@ -1,7 +1,7 @@
 extends Node3D
 
 # K-Games 2: Native Vulkan 3D Game Suite
-const VERSION = "0.008"
+const VERSION = "0.009"
 
 const SoundManagerScript = preload("res://scripts/SoundManager.gd")
 var sound_mgr: Node = null
@@ -27,6 +27,8 @@ var is_tap = false
 var main_menu_modal: Control = null
 var settings_modal: Control = null
 var game_selection_modal: Control = null
+var player_setup_modal: Control = null
+var selected_game_to_launch: String = ""
 var bottom_bar: Control = null
 
 # App Settings State
@@ -102,7 +104,26 @@ func _unhandled_input(event):
 	if is_modal_open():
 		return
 
-	if event is InputEventMouseButton:
+	if event is InputEventScreenTouch:
+		if event.pressed:
+			is_dragging = true
+			is_tap = true
+			drag_start_mouse = event.position
+			touch_start_pos = event.position
+		else:
+			is_dragging = false
+			if is_tap:
+				raycast_click(event.position)
+	elif event is InputEventScreenDrag and is_dragging:
+		var delta = event.position - drag_start_mouse
+		if delta.length() > 8.0:
+			is_tap = false
+		drag_start_mouse = event.position
+		rot_y -= delta.x * 0.005
+		rot_x = clamp(rot_x - delta.y * 0.005, -1.2, 0.2)
+		camera_pivot.rotation.y = rot_y
+		camera_pivot.rotation.x = rot_x
+	elif event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
 				is_dragging = true
@@ -120,7 +141,6 @@ func _unhandled_input(event):
 			camera_3d.position.z = max(5.0, camera_3d.position.z - 0.5)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			camera_3d.position.z = min(25.0, camera_3d.position.z + 0.5)
-			
 	elif event is InputEventMouseMotion and is_dragging:
 		var delta = event.position - drag_start_mouse
 		if delta.length() > 5.0:
@@ -158,7 +178,7 @@ func setup_3d_tabletop_scene():
 	table_inst.position = Vector3(0, -0.3, 0)
 	world_3d.add_child(table_inst)
 
-func switch_game(game_id: String):
+func switch_game(game_id: String, bot_opponent: bool = true):
 	current_game = game_id
 	if current_game_instance:
 		current_game_instance.queue_free()
@@ -170,6 +190,8 @@ func switch_game(game_id: String):
 		var game_node = Node3D.new()
 		game_node.name = game_id.capitalize() + "Instance"
 		game_node.set_script(SCRIPTS[game_id])
+		if "is_bot_opponent" in game_node:
+			game_node.is_bot_opponent = bot_opponent
 		if game_node.has_signal("status_changed"):
 			game_node.connect("status_changed", Callable(self, "_on_game_status_changed"))
 		if game_node.has_signal("sound_triggered"):
@@ -181,7 +203,8 @@ func switch_game(game_id: String):
 		for meta in GAME_METADATA:
 			if meta.id == game_id:
 				if status_label:
-					status_label.text = meta.icon + " " + meta.name + " (" + meta.cat + ")"
+					var mode_str = " (gegen Bot)" if bot_opponent else " (2 Spieler Pass & Play)"
+					status_label.text = meta.icon + " " + meta.name + mode_str
 				break
 
 	# Entsprechenden Sound für Spielstart spielen
@@ -199,7 +222,7 @@ func switch_game(game_id: String):
 		_:
 			play_sound("click")
 
-	print("Switched to: ", game_id)
+	print("Switched to: ", game_id, " (Bot: ", bot_opponent, ")")
 
 func _on_game_status_changed(msg: String):
 	if status_label:
@@ -360,7 +383,7 @@ func build_modals():
 		card.mouse_filter = Control.MOUSE_FILTER_STOP
 		var gid = g.id
 		card.pressed.connect(func():
-			switch_game(gid)
+			prompt_player_setup(gid)
 		)
 		grid.add_child(card)
 
@@ -371,6 +394,36 @@ func build_modals():
 	)
 	gs_vbox.add_child(gs_close)
 	ui.add_child(game_selection_modal)
+
+	# 4. Vor Spielstart Spieler- & Bot-Auswahl Modal (Komplette Fenstergröße, zentriert)
+	var ps_data = create_fullscreen_modal_panel("👥 Spielmodus auswählen: Einzelspieler oder Mehrspieler")
+	player_setup_modal = ps_data["container"]
+	var ps_vbox = ps_data["vbox"]
+
+	var ps_info = Label.new()
+	ps_info.name = "GameTitleLabel"
+	ps_info.text = "Wähle deine Spielweise vor dem Spielbeginn:"
+	ps_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ps_vbox.add_child(ps_info)
+
+	var btn_bot = create_dialog_button("👤 Einzelspieler (Gegen intelligenten KI-Bot spielen)", func():
+		play_sound("click")
+		switch_game(selected_game_to_launch, true)
+	)
+	ps_vbox.add_child(btn_bot)
+
+	var btn_human = create_dialog_button("👥 2 Spieler (Mensch gegen Mensch / Pass & Play)", func():
+		play_sound("click")
+		switch_game(selected_game_to_launch, false)
+	)
+	ps_vbox.add_child(btn_human)
+
+	var btn_ps_cancel = create_dialog_button("◀️ Zurück zur Spielauswahl", func():
+		play_sound("click")
+		toggle_game_selection()
+	)
+	ps_vbox.add_child(btn_ps_cancel)
+	ui.add_child(player_setup_modal)
 
 	close_all_modals()
 
@@ -475,11 +528,23 @@ func build_quick_bottom_bar():
 		btn.custom_minimum_size = Vector2(175, 52)
 		var gid = g.id
 		btn.pressed.connect(func():
-			switch_game(gid)
+			prompt_player_setup(gid)
 		)
 		hbox.add_child(btn)
 
 	ui.add_child(bottom_bar)
+
+func prompt_player_setup(game_id: String):
+	selected_game_to_launch = game_id
+	close_all_modals()
+	if player_setup_modal:
+		var lbl = player_setup_modal.find_child("GameTitleLabel", true, false) as Label
+		for g in GAME_METADATA:
+			if g.id == game_id:
+				if lbl:
+					lbl.text = "Gewähltes Spiel: " + g.icon + " " + g.name + " (" + g.cat + ")\nWähle deine Spielweise vor dem Beginn:"
+				break
+		player_setup_modal.visible = true
 
 func toggle_main_menu():
 	var cur = main_menu_modal.visible
@@ -500,9 +565,10 @@ func close_all_modals():
 	if main_menu_modal: main_menu_modal.visible = false
 	if settings_modal: settings_modal.visible = false
 	if game_selection_modal: game_selection_modal.visible = false
+	if player_setup_modal: player_setup_modal.visible = false
 
 func is_modal_open() -> bool:
-	return (main_menu_modal and main_menu_modal.visible) or (settings_modal and settings_modal.visible) or (game_selection_modal and game_selection_modal.visible)
+	return (main_menu_modal and main_menu_modal.visible) or (settings_modal and settings_modal.visible) or (game_selection_modal and game_selection_modal.visible) or (player_setup_modal and player_setup_modal.visible)
 
 func reset_camera():
 	rot_y = 0.0
