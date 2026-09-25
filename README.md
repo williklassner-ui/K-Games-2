@@ -7,7 +7,7 @@ Native 3D Vulkan Game Engine Suite built on **Godot Engine 4.7 (Vulkan Forward+ 
 - 3D Dynamic Lighting, Shadows & Particle Effects
 - Free Orbit Camera & Tactical Pan Controls
 - 10 Modulare 3D-Spiele: Schach, Risiko, Schiffe versenken, Civilization, Mensch ärgere dich nicht, Monopoly, Kniffel, Lotti Karotti, Katan & Scotland Yard
-- Cross-Platform Targets: Windows 64-bit & Android APK
+- Automatische Multiplattform-Builds: Windows Desktop 64-bit EXE und Android APK
 
 ## Version
-Current Version: **v0.002** (Format: x.xxx)
+Current Version: **v0.003** (Format: x.xxx)

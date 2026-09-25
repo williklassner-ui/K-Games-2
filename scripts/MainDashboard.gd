@@ -1,7 +1,7 @@
 extends Node3D
 
 # K-Games 2: Native Vulkan 3D Game Suite
-const VERSION = "0.002"
+const VERSION = "0.003"
 
 @onready var camera_pivot = $CameraPivot
 @onready var status_label = $UI/TopBar/StatusLabel
