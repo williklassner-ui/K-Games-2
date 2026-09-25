@@ -1,7 +1,7 @@
 extends Node3D
 
 # K-Games 2: Native Vulkan 3D Game Suite
-const VERSION = "0.007"
+const VERSION = "0.008"
 
 const SoundManagerScript = preload("res://scripts/SoundManager.gd")
 var sound_mgr: Node = null
@@ -88,10 +88,10 @@ func _ready():
 	build_modals()
 	build_quick_bottom_bar()
 
-	# Startspiel laden
+	# Startspiel initialisieren
 	switch_game("chess")
 
-	# Benutzeranforderung 2: Starte mit Spielauswahl
+	# Startet mit zentrierter Spielauswahl über die gesamte Fenstergröße
 	toggle_game_selection()
 
 func play_sound(s_name: String):
@@ -245,7 +245,7 @@ func build_topbar_actions():
 	)
 	topbar.add_child(settings_btn)
 
-	# Labels davor bewahren Touch-Events abzufangen
+	# Labels vor Blockieren bewahren
 	var title = topbar.get_node_or_null("TitleLabel")
 	if title:
 		title.offset_left = 410.0
@@ -259,8 +259,8 @@ func build_topbar_actions():
 func build_modals():
 	var ui = $UI
 
-	# 1. Hauptmenü Modal
-	var mm_data = create_modal_panel("K-Games 2 - Hauptmenü", Vector2(400, 480))
+	# 1. Hauptmenü Modal (Komplette Fenstergröße, zentriert)
+	var mm_data = create_fullscreen_modal_panel("K-Games 2 - Hauptmenü")
 	main_menu_modal = mm_data["container"]
 	var mm_vbox = mm_data["vbox"]
 
@@ -276,7 +276,7 @@ func build_modals():
 		play_sound("click")
 		toggle_settings()
 	)
-	var btn_reset_cam = create_dialog_button("🔄 Kamera zurücksetzen", func():
+	var btn_reset_cam = create_dialog_button("🔄 3D-Kamera zurücksetzen", func():
 		play_sound("click")
 		reset_camera()
 	)
@@ -292,8 +292,8 @@ func build_modals():
 	mm_vbox.add_child(btn_quit)
 	ui.add_child(main_menu_modal)
 
-	# 2. Settings Modal
-	var s_data = create_modal_panel("⚙️ App-Einstellungen (Settings)", Vector2(460, 420))
+	# 2. Settings Modal (Komplette Fenstergröße, zentriert)
+	var s_data = create_fullscreen_modal_panel("⚙️ App-Einstellungen (Settings)")
 	settings_modal = s_data["container"]
 	var s_vbox = s_data["vbox"]
 
@@ -334,26 +334,29 @@ func build_modals():
 	s_vbox.add_child(s_close)
 	ui.add_child(settings_modal)
 
-	# 3. Spielauswahl Modal (Grid mit allen 17 Spielen)
-	var gs_data = create_modal_panel("🎮 Spielauswahl - 17 Klassiker in 3D", Vector2(720, 520))
+	# 3. Spielauswahl Modal (Komplette Fenstergröße, zentriert mit Scroll-Grid)
+	var gs_data = create_fullscreen_modal_panel("🎮 Spielauswahl - 17 Klassiker in 3D")
 	game_selection_modal = gs_data["container"]
 	var gs_vbox = gs_data["vbox"]
 
 	var scroll = ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(680, 400)
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	
 	var grid = GridContainer.new()
 	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 12)
-	grid.add_theme_constant_override("v_separation", 10)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 16)
+	grid.add_theme_constant_override("v_separation", 14)
 	scroll.add_child(grid)
 
 	for g in GAME_METADATA:
 		var card = Button.new()
 		card.text = g.icon + " " + g.name + "\n[" + g.cat + "]"
-		card.custom_minimum_size = Vector2(215, 64)
+		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		card.custom_minimum_size = Vector2(240, 72)
 		card.mouse_filter = Control.MOUSE_FILTER_STOP
 		var gid = g.id
 		card.pressed.connect(func():
@@ -371,40 +374,54 @@ func build_modals():
 
 	close_all_modals()
 
-func create_modal_panel(title_str: String, panel_size: Vector2) -> Dictionary:
+func create_fullscreen_modal_panel(title_str: String) -> Dictionary:
 	var container = Control.new()
-	container.anchors_preset = Control.PRESET_FULL_RECT
+	container.set_anchors_preset(Control.PRESET_FULL_RECT)
+	container.offset_left = 0
+	container.offset_top = 0
+	container.offset_right = 0
+	container.offset_bottom = 0
 	container.mouse_filter = Control.MOUSE_FILTER_STOP
 
-	# Halbtransparenter Hintergrund
+	# Hintergrund
 	var bg = ColorRect.new()
-	bg.color = Color(0, 0, 0, 0.72)
-	bg.anchors_preset = Control.PRESET_FULL_RECT
+	bg.color = Color(0.04, 0.06, 0.1, 0.88)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.offset_left = 0
+	bg.offset_top = 0
+	bg.offset_right = 0
+	bg.offset_bottom = 0
 	bg.mouse_filter = Control.MOUSE_FILTER_STOP
 	container.add_child(bg)
 
-	# Panel
+	# Panel über das gesamte Fenster zentriert
 	var panel = PanelContainer.new()
-	panel.custom_minimum_size = panel_size
-	panel.anchors_preset = Control.PRESET_CENTER
-	panel.offset_left = -panel_size.x * 0.5
-	panel.offset_right = panel_size.x * 0.5
-	panel.offset_top = -panel_size.y * 0.5
-	panel.offset_bottom = panel_size.y * 0.5
+	panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	panel.offset_left = 32
+	panel.offset_top = 32
+	panel.offset_right = -32
+	panel.offset_bottom = -32
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	container.add_child(panel)
 
 	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 20)
-	margin.add_theme_constant_override("margin_top", 16)
-	margin.add_theme_constant_override("margin_right", 20)
-	margin.add_theme_constant_override("margin_bottom", 16)
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.offset_left = 0
+	margin.offset_top = 0
+	margin.offset_right = 0
+	margin.offset_bottom = 0
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_right", 24)
+	margin.add_theme_constant_override("margin_bottom", 20)
 	margin.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.add_child(margin)
 
 	var vbox = VBoxContainer.new()
 	vbox.name = "VBox"
-	vbox.add_theme_constant_override("separation", 12)
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 14)
 	vbox.mouse_filter = Control.MOUSE_FILTER_STOP
 	margin.add_child(vbox)
 
@@ -423,7 +440,7 @@ func create_modal_panel(title_str: String, panel_size: Vector2) -> Dictionary:
 func create_dialog_button(txt: String, callback: Callable) -> Button:
 	var btn = Button.new()
 	btn.text = txt
-	btn.custom_minimum_size = Vector2(0, 48)
+	btn.custom_minimum_size = Vector2(0, 52)
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	btn.pressed.connect(callback)
 	return btn
@@ -433,7 +450,7 @@ func build_quick_bottom_bar():
 	bottom_bar = PanelContainer.new()
 	bottom_bar.name = "QuickBottomBar"
 	bottom_bar.mouse_filter = Control.MOUSE_FILTER_PASS
-	bottom_bar.anchors_preset = Control.PRESET_BOTTOM_WIDE
+	bottom_bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	bottom_bar.offset_top = -80
 	bottom_bar.offset_bottom = -10
 	bottom_bar.offset_left = 12

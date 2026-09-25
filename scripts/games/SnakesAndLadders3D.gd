@@ -2,11 +2,44 @@ extends Node3D
 
 class_name SnakesAndLadders3D
 
+signal status_changed(msg: String)
+signal sound_triggered(sound_name: String)
+
+var tile_coords: Array = []
+var player_pos = 0
+var ai_pos = 0
+var player_node: Node3D = null
+var ai_node: Node3D = null
+var ui_layer: CanvasLayer
+
+const LADDERS = {
+	4: 14,
+	9: 31,
+	20: 38,
+	28: 84,
+	40: 59,
+	51: 67,
+	63: 81,
+	71: 91
+}
+
+const SNAKES = {
+	17: 7,
+	54: 34,
+	62: 19,
+	64: 60,
+	87: 24,
+	93: 73,
+	95: 75,
+	99: 78
+}
+
 func _ready():
 	setup_stage()
+	setup_game_ui()
+	emit_signal("status_changed", "Snakes & Ladders 3D: Würfle um Feld 100 zu erreichen! Achte auf Schlangen und Leitern.")
 
 func setup_stage():
-	# 10x10 Spielfeld (Felder 1 bis 100)
 	var board_mesh = BoxMesh.new()
 	board_mesh.size = Vector3(10.5, 0.4, 10.5)
 	var board = MeshInstance3D.new()
@@ -17,13 +50,14 @@ func setup_stage():
 	board.position = Vector3(0, 0.15, 0)
 	add_child(board)
 
-	# 100 Felder
+	tile_coords.clear()
 	for i in range(100):
 		var row = int(i / 10)
 		var col = i % 10
 		if row % 2 == 1:
 			col = 9 - col
 		var pos = Vector3((col - 4.5) * 0.95, 0.38, (4.5 - row) * 0.95)
+		tile_coords.append(pos)
 
 		var tile = MeshInstance3D.new()
 		var tm = BoxMesh.new()
@@ -36,60 +70,10 @@ func setup_stage():
 		tile.position = pos
 		add_child(tile)
 
-	# 3D Leitern (Gold)
-	spawn_ladder(Vector3(-3.0, 0.4, 3.5), Vector3(-1.0, 0.9, 0.5))
-	spawn_ladder(Vector3(1.5, 0.4, 2.5), Vector3(3.0, 1.1, -1.5))
-	spawn_ladder(Vector3(-2.5, 0.4, -0.5), Vector3(-3.5, 1.3, -3.5))
+	player_node = spawn_pawn(tile_coords[0] + Vector3(-0.15, 0.1, 0), Color(0.9, 0.1, 0.1))
+	ai_node = spawn_pawn(tile_coords[0] + Vector3(0.15, 0.1, 0), Color(0.1, 0.4, 0.9))
 
-	# 3D Schlangen (Rot/Grün geschwungen)
-	spawn_snake(Vector3(2.5, 0.4, -3.5), Vector3(1.0, 0.4, 0.5))
-	spawn_snake(Vector3(-1.5, 0.4, -2.5), Vector3(-2.0, 0.4, 1.5))
-
-	# Spielfiguren
-	spawn_pawn(Vector3(-4.0, 0.45, 4.0), Color(0.9, 0.1, 0.1))
-	spawn_pawn(Vector3(-3.0, 0.45, 4.0), Color(0.1, 0.4, 0.9))
-
-func spawn_ladder(start_p: Vector3, end_p: Vector3):
-	var ladder = Node3D.new()
-	var mid = (start_p + end_p) * 0.5
-	ladder.position = mid
-
-	var l_mat = StandardMaterial3D.new()
-	l_mat.albedo_color = Color(0.95, 0.8, 0.2)
-	l_mat.metallic = 0.8
-
-	# Holme
-	for offset in [-0.2, 0.2]:
-		var r = MeshInstance3D.new()
-		var rm = BoxMesh.new()
-		var dist = start_p.distance_to(end_p)
-		rm.size = Vector3(0.06, 0.06, dist)
-		r.mesh = rm
-		r.material_override = l_mat
-		r.position = Vector3(offset, 0, 0)
-		ladder.add_child(r)
-
-	ladder.look_at(end_p)
-	add_child(ladder)
-
-func spawn_snake(head_p: Vector3, tail_p: Vector3):
-	var s_mat = StandardMaterial3D.new()
-	s_mat.albedo_color = Color(0.15, 0.75, 0.25)
-	s_mat.roughness = 0.3
-
-	for i in range(6):
-		var t = float(i) / 5.0
-		var pos = head_p.lerp(tail_p, t) + Vector3(sin(t * PI * 2) * 0.4, 0.05, 0)
-		var seg = MeshInstance3D.new()
-		var sm = SphereMesh.new()
-		sm.radius = 0.16 * (1.0 - t * 0.4)
-		sm.height = sm.radius * 2
-		seg.mesh = sm
-		seg.material_override = s_mat
-		seg.position = pos
-		add_child(seg)
-
-func spawn_pawn(pos: Vector3, col: Color):
+func spawn_pawn(pos: Vector3, col: Color) -> Node3D:
 	var p = Node3D.new()
 	p.position = pos
 	var mat = StandardMaterial3D.new()
@@ -116,3 +100,81 @@ func spawn_pawn(pos: Vector3, col: Color):
 	p.add_child(head)
 
 	add_child(p)
+	return p
+
+func setup_game_ui():
+	ui_layer = CanvasLayer.new()
+	add_child(ui_layer)
+
+	var panel = PanelContainer.new()
+	panel.anchors_preset = Control.PRESET_BOTTOM_RIGHT
+	panel.offset_left = -300
+	panel.offset_top = -140
+	panel.offset_right = -20
+	panel.offset_bottom = -20
+	ui_layer.add_child(panel)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 8)
+	panel.add_child(vbox)
+
+	var lbl = Label.new()
+	lbl.name = "SnakesInfo"
+	lbl.text = "Du: Feld 1 | Gegner: Feld 1"
+	vbox.add_child(lbl)
+
+	var roll_btn = Button.new()
+	roll_btn.text = "🎲 Würfeln & Vorrücken"
+	roll_btn.custom_minimum_size = Vector2(0, 44)
+	roll_btn.pressed.connect(play_turn)
+	vbox.add_child(roll_btn)
+
+func play_turn():
+	var roll = randi_range(1, 6)
+	emit_signal("sound_triggered", "dice")
+
+	player_pos = min(99, player_pos + roll)
+	var final_target = tile_coords[player_pos] + Vector3(-0.15, 0.1, 0)
+	animate_pawn(player_node, final_target)
+
+	if LADDERS.has(player_pos):
+		var new_pos = LADDERS[player_pos]
+		player_pos = new_pos
+		emit_signal("sound_triggered", "win")
+		emit_signal("status_changed", "LEITER HOCHGEKLETTERT auf Feld " + str(player_pos + 1) + "!")
+	elif SNAKES.has(player_pos):
+		var new_pos = SNAKES[player_pos]
+		player_pos = new_pos
+		emit_signal("sound_triggered", "shoot")
+		emit_signal("status_changed", "OH NEIN! Von Schlange gebissen zurück auf Feld " + str(player_pos + 1) + "!")
+	else:
+		emit_signal("sound_triggered", "move")
+		emit_signal("status_changed", "Du würfelst " + str(roll) + " und ziehst auf Feld " + str(player_pos + 1) + "!")
+
+	if player_pos >= 99:
+		emit_signal("sound_triggered", "win")
+		emit_signal("status_changed", "SIEG! Du hast das Zielfeld 100 erreicht und gewonnen!")
+		return
+
+	# KI zieht
+	get_tree().create_timer(0.6).timeout.connect(func():
+		var ai_roll = randi_range(1, 6)
+		ai_pos = min(99, ai_pos + ai_roll)
+		if LADDERS.has(ai_pos): ai_pos = LADDERS[ai_pos]
+		elif SNAKES.has(ai_pos): ai_pos = SNAKES[ai_pos]
+		var ai_target = tile_coords[ai_pos] + Vector3(0.15, 0.1, 0)
+		animate_pawn(ai_node, ai_target)
+		emit_signal("sound_triggered", "move")
+		update_ui()
+	)
+
+func animate_pawn(pawn: Node3D, target: Vector3):
+	var tween = create_tween()
+	var mid = (pawn.position + target) * 0.5 + Vector3(0, 0.7, 0)
+	tween.tween_property(pawn, "position", mid, 0.15)
+	tween.tween_property(pawn, "position", target, 0.15)
+
+func update_ui():
+	var lbl = ui_layer.get_node_or_null("PanelContainer/VBoxContainer/SnakesInfo") as Label
+	if lbl:
+		lbl.text = "Du: Feld " + str(player_pos + 1) + " | Gegner: Feld " + str(ai_pos + 1)
