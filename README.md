@@ -12,4 +12,4 @@ Native 3D Vulkan Game Engine Suite built on **Godot Engine 4.7 (Vulkan Forward+ 
 - Automatische Multiplattform-Builds: Standalone Windows Desktop 64-bit EXE und Android APK
 
 ## Version
-Current Version: **v0.006** (Format: x.xxx)
+Current Version: **v0.007** (Format: x.xxx)

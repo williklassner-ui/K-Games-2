@@ -1,7 +1,10 @@
 extends Node3D
 
 # K-Games 2: Native Vulkan 3D Game Suite
-const VERSION = "0.006"
+const VERSION = "0.007"
+
+const SoundManagerScript = preload("res://scripts/SoundManager.gd")
+var sound_mgr: Node = null
 
 @onready var camera_pivot = $CameraPivot
 @onready var camera_3d = $CameraPivot/Camera3D
@@ -74,15 +77,28 @@ const GAME_METADATA = [
 
 func _ready():
 	print("=== K-Games 2 Suite v", VERSION, " Initialized ===")
+	sound_mgr = SoundManagerScript.new()
+	sound_mgr.name = "SoundManager"
+	add_child(sound_mgr)
+
 	if version_label:
 		version_label.text = "v" + VERSION + " (Vulkan Forward+)"
 	setup_3d_tabletop_scene()
 	build_topbar_actions()
 	build_modals()
 	build_quick_bottom_bar()
+
+	# Startspiel laden
 	switch_game("chess")
 
-func _input(event):
+	# Benutzeranforderung 2: Starte mit Spielauswahl
+	toggle_game_selection()
+
+func play_sound(s_name: String):
+	if sound_mgr and sound_mgr.has_method("play"):
+		sound_mgr.play(s_name)
+
+func _unhandled_input(event):
 	if is_modal_open():
 		return
 
@@ -156,6 +172,8 @@ func switch_game(game_id: String):
 		game_node.set_script(SCRIPTS[game_id])
 		if game_node.has_signal("status_changed"):
 			game_node.connect("status_changed", Callable(self, "_on_game_status_changed"))
+		if game_node.has_signal("sound_triggered"):
+			game_node.connect("sound_triggered", Callable(self, "play_sound"))
 
 		world_3d.add_child(game_node)
 		current_game_instance = game_node
@@ -165,6 +183,22 @@ func switch_game(game_id: String):
 				if status_label:
 					status_label.text = meta.icon + " " + meta.name + " (" + meta.cat + ")"
 				break
+
+	# Entsprechenden Sound für Spielstart spielen
+	match game_id:
+		"chess", "mensch", "monopoly", "katan", "scotland", "lotti", "snakes":
+			play_sound("move")
+		"kniffel":
+			play_sound("dice")
+		"durak", "uno", "uno_extreme":
+			play_sound("card")
+		"battleship", "ra2", "space":
+			play_sound("shoot")
+		"tetris", "ctp2", "risiko":
+			play_sound("select")
+		_:
+			play_sound("click")
+
 	print("Switched to: ", game_id)
 
 func _on_game_status_changed(msg: String):
@@ -175,46 +209,81 @@ func _on_game_status_changed(msg: String):
 
 func build_topbar_actions():
 	var topbar = $UI/TopBar
+	topbar.mouse_filter = Control.MOUSE_FILTER_STOP
 	
-	# Menü-Buttons links & rechts in der TopBar
+	# Menü-Buttons links & rechts in der TopBar (Optimiert für Touch & Maus: 48px Touch-Target)
 	var menu_btn = Button.new()
 	menu_btn.text = "☰ Menü"
-	menu_btn.custom_minimum_size = Vector2(90, 36)
-	menu_btn.position = Vector2(16, 10)
-	menu_btn.pressed.connect(toggle_main_menu)
+	menu_btn.custom_minimum_size = Vector2(100, 44)
+	menu_btn.position = Vector2(12, 8)
+	menu_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	menu_btn.pressed.connect(func():
+		play_sound("click")
+		toggle_main_menu()
+	)
 	topbar.add_child(menu_btn)
 
 	var games_btn = Button.new()
 	games_btn.text = "🎮 Alle Spiele (17)"
-	games_btn.custom_minimum_size = Vector2(140, 36)
-	games_btn.position = Vector2(115, 10)
-	games_btn.pressed.connect(toggle_game_selection)
+	games_btn.custom_minimum_size = Vector2(150, 44)
+	games_btn.position = Vector2(122, 8)
+	games_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	games_btn.pressed.connect(func():
+		play_sound("click")
+		toggle_game_selection()
+	)
 	topbar.add_child(games_btn)
 
 	var settings_btn = Button.new()
 	settings_btn.text = "⚙️ Settings"
-	settings_btn.custom_minimum_size = Vector2(100, 36)
-	settings_btn.position = Vector2(265, 10)
-	settings_btn.pressed.connect(toggle_settings)
+	settings_btn.custom_minimum_size = Vector2(110, 44)
+	settings_btn.position = Vector2(282, 8)
+	settings_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	settings_btn.pressed.connect(func():
+		play_sound("click")
+		toggle_settings()
+	)
 	topbar.add_child(settings_btn)
 
-	# TitleLabel nach rechts verschieben
+	# Labels davor bewahren Touch-Events abzufangen
 	var title = topbar.get_node_or_null("TitleLabel")
 	if title:
-		title.offset_left = 380.0
+		title.offset_left = 410.0
+		title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	if status_label:
+		status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if version_label:
+		version_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func build_modals():
 	var ui = $UI
 
 	# 1. Hauptmenü Modal
-	main_menu_modal = create_modal_panel("K-Games 2 - Hauptmenü", Vector2(400, 480))
-	var mm_vbox = main_menu_modal.get_node("VBox")
+	var mm_data = create_modal_panel("K-Games 2 - Hauptmenü", Vector2(400, 480))
+	main_menu_modal = mm_data["container"]
+	var mm_vbox = mm_data["vbox"]
 
-	var btn_continue = create_dialog_button("▶️ Weiterspielen", func(): close_all_modals())
-	var btn_all_games = create_dialog_button("🎮 Spielauswahl öffnen (17 Spiele)", func(): toggle_game_selection())
-	var btn_settings = create_dialog_button("⚙️ Einstellungen / Settings", func(): toggle_settings())
-	var btn_reset_cam = create_dialog_button("🔄 Kamera zurücksetzen", func(): reset_camera())
-	var btn_quit = create_dialog_button("❌ Beenden", func(): get_tree().quit())
+	var btn_continue = create_dialog_button("▶️ Weiterspielen", func():
+		play_sound("click")
+		close_all_modals()
+	)
+	var btn_all_games = create_dialog_button("🎮 Spielauswahl öffnen (17 Spiele)", func():
+		play_sound("click")
+		toggle_game_selection()
+	)
+	var btn_settings = create_dialog_button("⚙️ Einstellungen / Settings", func():
+		play_sound("click")
+		toggle_settings()
+	)
+	var btn_reset_cam = create_dialog_button("🔄 Kamera zurücksetzen", func():
+		play_sound("click")
+		reset_camera()
+	)
+	var btn_quit = create_dialog_button("❌ Beenden", func():
+		play_sound("click")
+		get_tree().quit()
+	)
 
 	mm_vbox.add_child(btn_continue)
 	mm_vbox.add_child(btn_all_games)
@@ -224,14 +293,21 @@ func build_modals():
 	ui.add_child(main_menu_modal)
 
 	# 2. Settings Modal
-	settings_modal = create_modal_panel("⚙️ App-Einstellungen (Settings)", Vector2(460, 420))
-	var s_vbox = settings_modal.get_node("VBox")
+	var s_data = create_modal_panel("⚙️ App-Einstellungen (Settings)", Vector2(460, 420))
+	settings_modal = s_data["container"]
+	var s_vbox = s_data["vbox"]
 
 	# Audio Toggle
 	var sound_chk = CheckBox.new()
 	sound_chk.text = "🔊 Sound-Effekte & Audio aktiviert"
 	sound_chk.button_pressed = sound_enabled
-	sound_chk.toggled.connect(func(val): sound_enabled = val)
+	sound_chk.toggled.connect(func(val):
+		sound_enabled = val
+		if sound_mgr and sound_mgr.has_method("set_sound_enabled"):
+			sound_mgr.set_sound_enabled(val)
+		if val:
+			play_sound("select")
+	)
 	s_vbox.add_child(sound_chk)
 
 	# Schatten Toggle
@@ -239,6 +315,7 @@ func build_modals():
 	shadow_chk.text = "💡 Dynamischer 3D-Schattenwurf (High Quality)"
 	shadow_chk.button_pressed = shadows_enabled
 	shadow_chk.toggled.connect(func(val):
+		play_sound("click")
 		shadows_enabled = val
 		var dir_light = get_node_or_null("DirectionalLight3D")
 		if dir_light: dir_light.shadow_enabled = val
@@ -250,13 +327,17 @@ func build_modals():
 	info_lbl.text = "\nApp Info:\n• Version: v" + VERSION + " (Format: x.xxx)\n• Render-Engine: Godot 4.7 (Vulkan Forward+ / Mobile)\n• Multiplattform: Windows 64-bit & Android APK\n• Entwickler: Willi Klassner"
 	s_vbox.add_child(info_lbl)
 
-	var s_close = create_dialog_button("Schließen", func(): close_all_modals())
+	var s_close = create_dialog_button("Schließen", func():
+		play_sound("click")
+		close_all_modals()
+	)
 	s_vbox.add_child(s_close)
 	ui.add_child(settings_modal)
 
 	# 3. Spielauswahl Modal (Grid mit allen 17 Spielen)
-	game_selection_modal = create_modal_panel("🎮 Spielauswahl - 17 Klassiker in 3D", Vector2(720, 520))
-	var gs_vbox = game_selection_modal.get_node("VBox")
+	var gs_data = create_modal_panel("🎮 Spielauswahl - 17 Klassiker in 3D", Vector2(720, 520))
+	game_selection_modal = gs_data["container"]
+	var gs_vbox = gs_data["vbox"]
 
 	var scroll = ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(680, 400)
@@ -273,18 +354,24 @@ func build_modals():
 		var card = Button.new()
 		card.text = g.icon + " " + g.name + "\n[" + g.cat + "]"
 		card.custom_minimum_size = Vector2(215, 64)
+		card.mouse_filter = Control.MOUSE_FILTER_STOP
 		var gid = g.id
-		card.pressed.connect(func(): switch_game(gid))
+		card.pressed.connect(func():
+			switch_game(gid)
+		)
 		grid.add_child(card)
 
 	gs_vbox.add_child(scroll)
-	var gs_close = create_dialog_button("Abbrechen", func(): close_all_modals())
+	var gs_close = create_dialog_button("Schließen", func():
+		play_sound("click")
+		close_all_modals()
+	)
 	gs_vbox.add_child(gs_close)
 	ui.add_child(game_selection_modal)
 
 	close_all_modals()
 
-func create_modal_panel(title_str: String, panel_size: Vector2) -> Control:
+func create_modal_panel(title_str: String, panel_size: Vector2) -> Dictionary:
 	var container = Control.new()
 	container.anchors_preset = Control.PRESET_FULL_RECT
 	container.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -293,6 +380,7 @@ func create_modal_panel(title_str: String, panel_size: Vector2) -> Control:
 	var bg = ColorRect.new()
 	bg.color = Color(0, 0, 0, 0.72)
 	bg.anchors_preset = Control.PRESET_FULL_RECT
+	bg.mouse_filter = Control.MOUSE_FILTER_STOP
 	container.add_child(bg)
 
 	# Panel
@@ -303,6 +391,7 @@ func create_modal_panel(title_str: String, panel_size: Vector2) -> Control:
 	panel.offset_right = panel_size.x * 0.5
 	panel.offset_top = -panel_size.y * 0.5
 	panel.offset_bottom = panel_size.y * 0.5
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	container.add_child(panel)
 
 	var margin = MarginContainer.new()
@@ -310,27 +399,32 @@ func create_modal_panel(title_str: String, panel_size: Vector2) -> Control:
 	margin.add_theme_constant_override("margin_top", 16)
 	margin.add_theme_constant_override("margin_right", 20)
 	margin.add_theme_constant_override("margin_bottom", 16)
+	margin.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.add_child(margin)
 
 	var vbox = VBoxContainer.new()
 	vbox.name = "VBox"
 	vbox.add_theme_constant_override("separation", 12)
+	vbox.mouse_filter = Control.MOUSE_FILTER_STOP
 	margin.add_child(vbox)
 
 	var title = Label.new()
 	title.text = title_str
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(title)
 
 	var sep = HSeparator.new()
+	sep.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_child(sep)
 
-	return container
+	return {"container": container, "vbox": vbox}
 
 func create_dialog_button(txt: String, callback: Callable) -> Button:
 	var btn = Button.new()
 	btn.text = txt
 	btn.custom_minimum_size = Vector2(0, 48)
+	btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	btn.pressed.connect(callback)
 	return btn
 
@@ -363,7 +457,9 @@ func build_quick_bottom_bar():
 		btn.mouse_filter = Control.MOUSE_FILTER_STOP
 		btn.custom_minimum_size = Vector2(175, 52)
 		var gid = g.id
-		btn.pressed.connect(func(): switch_game(gid))
+		btn.pressed.connect(func():
+			switch_game(gid)
+		)
 		hbox.add_child(btn)
 
 	ui.add_child(bottom_bar)

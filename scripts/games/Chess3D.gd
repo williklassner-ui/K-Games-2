@@ -21,6 +21,7 @@ var highlight_mat: StandardMaterial3D
 var selected_mat: StandardMaterial3D
 
 signal status_changed(msg: String)
+signal sound_triggered(sound_name: String)
 
 func _ready():
 	init_materials()
@@ -250,6 +251,7 @@ func handle_tile_clicked(grid_pos: Vector2i):
 func select_piece(pos: Vector2i):
 	clear_highlights()
 	selected_pos = pos
+	emit_signal("sound_triggered", "select")
 
 	# Markierung für ausgewählte Figur
 	spawn_highlight(pos, selected_mat, 0.5)
@@ -265,6 +267,7 @@ func select_piece(pos: Vector2i):
 func execute_move(from: Vector2i, to: Vector2i):
 	var moving_code = grid[from.x][from.y]
 	var target_code = grid[to.x][to.y]
+	emit_signal("sound_triggered", "move")
 
 	# Ziel schlagen falls vorhanden
 	if target_code != "" and piece_nodes.has(to):
