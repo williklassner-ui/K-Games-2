@@ -16,6 +16,7 @@ var selected_pos = null
 var current_turn = "w"
 var move_count = 0
 var is_bot_opponent = true
+var ui_layer: CanvasLayer = null
 
 # Material-Caches
 var white_mat: StandardMaterial3D

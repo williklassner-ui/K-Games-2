@@ -12,7 +12,25 @@ Native 3D Vulkan Game Engine Suite built on **Godot Engine 4.7 (Vulkan Forward+ 
 - Automatische Multiplattform-Builds: Standalone Windows Desktop 64-bit EXE und Android APK
 
 ## Version
-Current Version: **v0.011** (Format: x.xxx)
+Current Version: **v0.012** (Format: x.xxx)
+
+### Changelog v0.012:
+- **High-Fidelity Audio-System (Absolut kein Gepiepse)**:
+  - Vollständige Umstellung auf kristallklare **16-Bit PCM Studioqualität (44.100 Hz / CD-Qualität)**.
+  - Das vorherige 8-Bit Lo-Fi-System und alle künstlichen Sinus-Pieptöne wurden vollständig verbannt.
+  - **Dezenter haptischer UI-Klick (`click`)**: Weicher, akustisch bedämpfter Soft-Pop ohne tonale Tonhöhe (wie edle Smartphone-/Kamera-Haptik).
+  - **Edler Marimba- / Holz-Akzent (`select`)**: Warmer Rosewood-Resonanzklang mit weichem Filzschlägel-Anschlag statt Synthesizer-Pieps.
+  - **Akustischer Holz-Figurenzug (`move`)**: Echter haptischer Holzkorpus-Aufsetzer ("Tock") auf samtunterlegtem Brett.
+  - **Echtes Würfeln (`dice`)**: Realistische Kaskade aus 5 physikalischen Aufprall- und Taumelereignissen mit nachklingender Tischresonanz.
+  - **Karten-Gleiten & Schnappen (`card`)**: Authentisches Papierreibungs-Gleiten mit anschließendem elastischem Kartenschnappen.
+  - **Kanonenschuss & Wucht-Explosion (`shoot`)**: Tieffrequente Druckwelle mit Sub-Bass (35-120 Hz) und realistischem Donnergrollen.
+  - **Orchestraler Sieges-Akkord (`win`)**: Strahlende F-Dur-Glockenakkord-Kaskade mit physikalischen Metallobertönen.
+  - **Wasser-Plätschern (`splash` / `miss`)**: Hydrodynamischer Wassereintritt und Tropfenspritzer für Schiffe versenken.
+  - **Karotten-Drehung (`twist`)**: Mechanisches Klick-Klack mit doppelter Rastung für Lotti Karotti.
+  - **Sanfter Niederlage-Klang (`loss`)**: Dezenter, respektvoller D-Moll-Akustikgong.
+- **Bugfixes & Stabilität**:
+  - `SnakesAndLadders3D.gd`: Vererbung von `Node3D` korrigiert.
+  - `Chess3D.gd`: Deklaration von `ui_layer` ergänzt.
 
 ### Changelog v0.011:
 - **Navigation & Menüsteuerung**:

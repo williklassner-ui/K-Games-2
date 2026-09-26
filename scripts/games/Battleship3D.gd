@@ -272,7 +272,7 @@ func handle_tile_clicked(grid_pos: Vector2i):
 			emit_signal("status_changed", "💥 TREFFER & EXPLOSION! Schiff getroffen! (" + str(enemy_hits) + "/" + str(total_enemy_ship_cells) + ")")
 	else:
 		enemy_grid[gx][gz] = 2
-		emit_signal("sound_triggered", "move")
+		emit_signal("sound_triggered", "splash")
 		spawn_splash(tile.position + Vector3(0, 0.2, 0))
 		spawn_hit_marker(tile, false)
 		emit_signal("status_changed", "🌊 PLUMPS! Nur Wasser bei (" + str(gx) + "," + str(gz) + "). " + ("Gegner zielt..." if is_bot_opponent else "Spieler 2 ist am Zug!"))
@@ -295,16 +295,16 @@ func show_game_over(won: bool):
 			if s_lbl: s_lbl.text = "Alle feindlichen Kriegsschiffe versenkt!\n• Abgefeuerte Schüsse: " + str(shots_fired) + "\n• Trefferquote: " + str(acc) + "%\n• Eigene Schiffe intakt: " + str(player_ships_left) + "/5"
 			emit_signal("status_changed", "SIEG! Alle Schiffe versenkt in " + str(shots_fired) + " Schüssen!")
 		else:
-			emit_signal("sound_triggered", "shoot")
+			emit_signal("sound_triggered", "loss")
 			if t_lbl: t_lbl.text = "💀 FLOTTE VERSENKT - NIEDERLAGE!"
 			if s_lbl: s_lbl.text = "Deine Kriegsschiffe wurden vernichtet!\n• Feindliche Schiffe getroffen: " + str(enemy_hits) + "/" + str(total_enemy_ship_cells)
 			emit_signal("status_changed", "NIEDERLAGE! Deine Flotte wurde versenkt!")
 
 func ai_take_shot():
 	if turn != "ai": return
-	emit_signal("sound_triggered", "shoot")
 	var hit_player = (randf() > 0.6)
 	if hit_player:
+		emit_signal("sound_triggered", "shoot")
 		player_ships_left -= 1
 		if not warships.is_empty():
 			var hit_ship = warships.pick_random()
@@ -314,6 +314,7 @@ func ai_take_shot():
 			return
 		emit_signal("status_changed", "⚠️ Feindfeuer! Ein eigenes Schiff versenkt (" + str(player_ships_left) + " übrig)! Du bist am Zug.")
 	else:
+		emit_signal("sound_triggered", "splash")
 		emit_signal("status_changed", "Gegner feuert ins Wasser vorbei! Du bist am Zug.")
 	turn = "player"
 

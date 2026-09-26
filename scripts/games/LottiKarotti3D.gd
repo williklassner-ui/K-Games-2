@@ -498,7 +498,7 @@ func animate_bunny_jump(bunny: Node3D, target: Vector3, callback: Callable):
 
 func twist_carrot():
 	is_animating = true
-	emit_signal("sound_triggered", "click")
+	emit_signal("sound_triggered", "twist")
 
 	# Karotte dreht sich um 60 Grad
 	var tween = create_tween()
@@ -525,7 +525,7 @@ func check_trap_falls(trap_idx: int):
 				any_fallen = true
 				var bunny_node = player_bunnies[team][b]
 				bunny_positions[team][b] = -1 # Zurück in Startmulde
-				emit_signal("sound_triggered", "shoot")
+				emit_signal("sound_triggered", "move")
 				
 				# Hase fällt ins Loch
 				var f_tween = create_tween()
@@ -560,7 +560,10 @@ func bot_take_turn():
 
 func show_victory(team: int):
 	is_animating = false
-	emit_signal("sound_triggered", "win")
+	if team == 0:
+		emit_signal("sound_triggered", "win")
+	else:
+		emit_signal("sound_triggered", "loss")
 	if victory_modal:
 		victory_modal.visible = true
 		var t_lbl = victory_modal.find_child("VictoryTitle", true, false) as Label

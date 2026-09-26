@@ -1,3 +1,5 @@
+extends Node3D
+
 const DiceHelper = preload("res://scripts/DiceHelper.gd")
 const TextureHelper = preload("res://scripts/TextureHelper.gd")
 
