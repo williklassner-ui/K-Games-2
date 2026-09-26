@@ -2,6 +2,8 @@ extends Node3D
 
 class_name MenschAergereDichNicht3D
 
+const TextureHelper = preload("res://scripts/TextureHelper.gd")
+
 signal status_changed(msg: String)
 signal sound_triggered(sound_name: String)
 
@@ -17,18 +19,14 @@ func _ready():
 	emit_signal("status_changed", "Mensch ärgere dich nicht: Würfle um eine Figur herauszusetzen (bei 6) oder zu bewegen!")
 
 func setup_stage():
-	# Hölzernes Spielbrett
+	# Hölzernes Spielbrett mit feiner Holzmaserung
 	var board_mesh = CylinderMesh.new()
 	board_mesh.top_radius = 5.2
 	board_mesh.bottom_radius = 5.4
 	board_mesh.height = 0.35
 	var board_inst = MeshInstance3D.new()
 	board_inst.mesh = board_mesh
-	
-	var mat = StandardMaterial3D.new()
-	mat.albedo_color = Color(0.85, 0.76, 0.58)
-	mat.roughness = 0.3
-	board_inst.material_override = mat
+	board_inst.material_override = TextureHelper.get_wood_material(Color(0.85, 0.76, 0.58))
 	board_inst.position = Vector3(0, 0.15, 0)
 	add_child(board_inst)
 
@@ -94,10 +92,7 @@ func spawn_pawn(pos: Vector3, col: Color, is_player: bool = false, pawn_id: int 
 	var pawn = Node3D.new()
 	pawn.position = pos
 	
-	var mat = StandardMaterial3D.new()
-	mat.albedo_color = col
-	mat.roughness = 0.2
-	mat.metallic = 0.25
+	var mat = TextureHelper.get_wood_material(col)
 
 	# Kegelkörper
 	var body_mesh = CylinderMesh.new()

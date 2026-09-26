@@ -2,6 +2,8 @@ extends Node3D
 
 class_name Battleship3D
 
+const TextureHelper = preload("res://scripts/TextureHelper.gd")
+
 signal status_changed(msg: String)
 signal sound_triggered(sound_name: String)
 
@@ -65,14 +67,7 @@ func setup_stage():
 	water_mesh_inst = MeshInstance3D.new()
 	water_mesh_inst.mesh = water_mesh
 	
-	water_mat = StandardMaterial3D.new()
-	water_mat.albedo_color = Color(0.04, 0.32, 0.58, 0.9)
-	water_mat.roughness = 0.06
-	water_mat.metallic = 0.8
-	water_mat.rim_enabled = true
-	water_mat.rim = 0.5
-	water_mat.clearcoat_enabled = true
-	water_mat.clearcoat = 1.0
+	water_mat = TextureHelper.get_water_material(Color(0.04, 0.32, 0.58, 0.9))
 	water_mesh_inst.material_override = water_mat
 	water_mesh_inst.position = Vector3(0, 0.15, 0)
 	ocean_root.add_child(water_mesh_inst)
@@ -82,11 +77,7 @@ func setup_stage():
 	border_mesh.size = Vector3(16.4, 0.3, 16.4)
 	var border_inst = MeshInstance3D.new()
 	border_inst.mesh = border_mesh
-	var border_mat = StandardMaterial3D.new()
-	border_mat.albedo_color = Color(0.08, 0.1, 0.14)
-	border_mat.metallic = 0.7
-	border_mat.roughness = 0.3
-	border_inst.material_override = border_mat
+	border_inst.material_override = TextureHelper.get_metal_material(Color(0.08, 0.1, 0.14), 0.85)
 	border_inst.position = Vector3(0, -0.05, 0)
 	ocean_root.add_child(border_inst)
 
@@ -337,10 +328,7 @@ func spawn_warship(pos: Vector3, length_cells: int, _ship_name: String, rot_deg:
 	ship.set_meta("base_y", pos.y)
 	
 	# Hochwertige PBR Tarnfarben-Materialien
-	var hull_mat = StandardMaterial3D.new()
-	hull_mat.albedo_color = Color(0.24, 0.28, 0.35)
-	hull_mat.roughness = 0.35
-	hull_mat.metallic = 0.75
+	var hull_mat = TextureHelper.get_metal_material(Color(0.24, 0.28, 0.35), 0.8)
 
 	var l = length_cells * 0.75
 	var hull_mesh = BoxMesh.new()
@@ -366,8 +354,7 @@ func spawn_warship(pos: Vector3, length_cells: int, _ship_name: String, rot_deg:
 	deck_mesh.size = Vector3(l * 0.45, 0.24, 0.28)
 	var deck_inst = MeshInstance3D.new()
 	deck_inst.mesh = deck_mesh
-	var deck_mat = StandardMaterial3D.new()
-	deck_mat.albedo_color = Color(0.16, 0.2, 0.25)
+	var deck_mat = TextureHelper.get_metal_material(Color(0.16, 0.2, 0.25), 0.88)
 	deck_mat.metallic = 0.8
 	deck_inst.material_override = deck_mat
 	deck_inst.position = Vector3(-0.1, 0.38, 0)

@@ -2,6 +2,8 @@ extends Node3D
 
 class_name Chess3D
 
+const TextureHelper = preload("res://scripts/TextureHelper.gd")
+
 var board_root: Node3D
 var pieces_root: Node3D
 var highlights_root: Node3D
@@ -30,15 +32,8 @@ func _ready():
 	reset_game()
 
 func init_materials():
-	white_mat = StandardMaterial3D.new()
-	white_mat.albedo_color = Color(0.96, 0.93, 0.86)
-	white_mat.roughness = 0.15
-	white_mat.metallic = 0.1
-
-	black_mat = StandardMaterial3D.new()
-	black_mat.albedo_color = Color(0.09, 0.09, 0.12)
-	black_mat.roughness = 0.25
-	black_mat.metallic = 0.45
+	white_mat = TextureHelper.get_marble_material(Color(0.96, 0.94, 0.88))
+	black_mat = TextureHelper.get_stone_material(Color(0.12, 0.14, 0.18))
 
 	highlight_mat = StandardMaterial3D.new()
 	highlight_mat.albedo_color = Color(0.15, 0.85, 0.35, 0.8)
@@ -65,20 +60,16 @@ func setup_stage():
 	highlights_root.name = "HighlightsRoot"
 	add_child(highlights_root)
 
-	# Holz- und Marmorrahmen
+	# Edler Holz- und Marmorrahmen
 	var frame_mesh = BoxMesh.new()
-	frame_mesh.size = Vector3(9.2, 0.4, 9.2)
+	frame_mesh.size = Vector3(9.4, 0.4, 9.4)
 	var frame_inst = MeshInstance3D.new()
 	frame_inst.mesh = frame_mesh
-	var frame_mat = StandardMaterial3D.new()
-	frame_mat.albedo_color = Color(0.18, 0.10, 0.05)
-	frame_mat.roughness = 0.25
-	frame_mat.metallic = 0.1
-	frame_inst.material_override = frame_mat
+	frame_inst.material_override = TextureHelper.get_wood_material(Color(0.18, 0.10, 0.05))
 	frame_inst.position = Vector3(0, 0.15, 0)
 	board_root.add_child(frame_inst)
 
-	# 64 3D Felder mit Bevel und statischen Kollisionsboxen für Touch/Klick
+	# 64 3D Felder mit Marmor-/Stein-Texturen und statischen Kollisionsboxen für Touch/Klick
 	for x in range(8):
 		for z in range(8):
 			var tile_mesh = BoxMesh.new()
@@ -86,22 +77,14 @@ func setup_stage():
 			var tile = MeshInstance3D.new()
 			tile.mesh = tile_mesh
 			var is_white = (x + z) % 2 == 0
-			var mat = StandardMaterial3D.new()
-			if is_white:
-				mat.albedo_color = Color(0.92, 0.90, 0.82)
-				mat.roughness = 0.2
-			else:
-				mat.albedo_color = Color(0.12, 0.15, 0.20)
-				mat.roughness = 0.35
-				mat.metallic = 0.15
-			tile.material_override = mat
+			tile.material_override = white_mat if is_white else black_mat
 			tile.position = Vector3((x - 3.5), 0.4, (z - 3.5))
 
 			# StaticBody für 3D-Picking / Raycast Klicks
 			var sb = StaticBody3D.new()
 			var col = CollisionShape3D.new()
 			var shape = BoxShape3D.new()
-			shape.size = Vector3(1.0, 0.2, 1.0)
+			shape.size = Vector3(1.0, 0.25, 1.0)
 			col.shape = shape
 			sb.add_child(col)
 			sb.set_meta("grid_pos", Vector2i(x, z))
@@ -144,6 +127,17 @@ func set_piece(x: int, z: int, piece_code: String):
 		var type = piece_code.substr(2)
 		var p_node = create_piece_mesh(type, is_white)
 		p_node.position = Vector3(x - 3.5, 0.5, z - 3.5)
+
+		var sb = StaticBody3D.new()
+		var col = CollisionShape3D.new()
+		var shape = CylinderShape3D.new()
+		shape.radius = 0.4
+		shape.height = 1.3
+		col.shape = shape
+		sb.add_child(col)
+		sb.set_meta("grid_pos", Vector2i(x, z))
+		p_node.add_child(sb)
+
 		pieces_root.add_child(p_node)
 		piece_nodes[Vector2i(x, z)] = p_node
 
@@ -284,6 +278,9 @@ func execute_move(from: Vector2i, to: Vector2i):
 		var node = piece_nodes[from]
 		piece_nodes.erase(from)
 		piece_nodes[to] = node
+		var sb = node.get_node_or_null("StaticBody3D")
+		if sb:
+			sb.set_meta("grid_pos", to)
 
 		# Sanfte 3D-Zug-Animation
 		var tween = create_tween()

@@ -1,15 +1,16 @@
 extends Node3D
 
 # K-Games 2: Native Vulkan 3D Game Suite
-const VERSION = "0.009"
+const VERSION = "0.010"
 
 const SoundManagerScript = preload("res://scripts/SoundManager.gd")
+const TextureHelper = preload("res://scripts/TextureHelper.gd")
 var sound_mgr: Node = null
 
 @onready var camera_pivot = $CameraPivot
 @onready var camera_3d = $CameraPivot/Camera3D
 @onready var status_label = $UI/TopBar/StatusLabel
-@onready var version_label = $UI/TopBar/VersionLabel
+@onready var title_label = $UI/TopBar/TitleLabel
 @onready var world_3d = $World3D
 
 var current_game_instance: Node3D = null
@@ -22,6 +23,7 @@ var rot_y = 0.0
 var rot_x = -0.5
 var touch_start_pos = Vector2.ZERO
 var is_tap = false
+var last_click_time_msec: int = 0
 
 # UI Dialoge
 var main_menu_modal: Control = null
@@ -29,7 +31,6 @@ var settings_modal: Control = null
 var game_selection_modal: Control = null
 var player_setup_modal: Control = null
 var selected_game_to_launch: String = ""
-var bottom_bar: Control = null
 
 # App Settings State
 var sound_enabled = true
@@ -83,12 +84,12 @@ func _ready():
 	sound_mgr.name = "SoundManager"
 	add_child(sound_mgr)
 
-	if version_label:
-		version_label.text = "v" + VERSION + " (Vulkan Forward+)"
+	if title_label:
+		title_label.text = "K-GAMES 2 (3D VULKAN ENGINE)"
+
 	setup_3d_tabletop_scene()
 	build_topbar_actions()
 	build_modals()
-	build_quick_bottom_bar()
 
 	# Startspiel initialisieren
 	switch_game("chess")
@@ -106,45 +107,47 @@ func _unhandled_input(event):
 
 	if event is InputEventScreenTouch:
 		if event.pressed:
-			is_dragging = true
+			is_dragging = false
 			is_tap = true
 			drag_start_mouse = event.position
 			touch_start_pos = event.position
 		else:
-			is_dragging = false
 			if is_tap:
 				raycast_click(event.position)
-	elif event is InputEventScreenDrag and is_dragging:
-		var delta = event.position - drag_start_mouse
-		if delta.length() > 8.0:
+			is_dragging = false
 			is_tap = false
-		drag_start_mouse = event.position
-		rot_y -= delta.x * 0.005
-		rot_x = clamp(rot_x - delta.y * 0.005, -1.2, 0.2)
-		camera_pivot.rotation.y = rot_y
-		camera_pivot.rotation.x = rot_x
+	elif event is InputEventScreenDrag:
+		var total_dist = (event.position - touch_start_pos).length()
+		if total_dist > 18.0:
+			is_tap = false
+			is_dragging = true
+			var delta = event.position - drag_start_mouse
+			drag_start_mouse = event.position
+			rot_y -= delta.x * 0.005
+			rot_x = clamp(rot_x - delta.y * 0.005, -1.2, 0.2)
+			camera_pivot.rotation.y = rot_y
+			camera_pivot.rotation.x = rot_x
 	elif event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed:
-				is_dragging = true
+				is_dragging = false
 				is_tap = true
 				drag_start_mouse = event.position
 				touch_start_pos = event.position
 			else:
-				is_dragging = false
 				if is_tap:
 					raycast_click(event.position)
+				is_dragging = false
+				is_tap = false
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			is_dragging = event.pressed
 			drag_start_mouse = event.position
 		elif event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			camera_3d.position.z = max(5.0, camera_3d.position.z - 0.5)
+			camera_3d.position.z = max(5.0, camera_3d.position.z - 0.75)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			camera_3d.position.z = min(25.0, camera_3d.position.z + 0.5)
+			camera_3d.position.z = min(35.0, camera_3d.position.z + 0.75)
 	elif event is InputEventMouseMotion and is_dragging:
 		var delta = event.position - drag_start_mouse
-		if delta.length() > 5.0:
-			is_tap = false
 		drag_start_mouse = event.position
 		rot_y -= delta.x * 0.005
 		rot_x = clamp(rot_x - delta.y * 0.005, -1.2, 0.2)
@@ -152,30 +155,39 @@ func _unhandled_input(event):
 		camera_pivot.rotation.x = rot_x
 
 func raycast_click(screen_pos: Vector2):
+	var now = Time.get_ticks_msec()
+	if now - last_click_time_msec < 160:
+		return
+	last_click_time_msec = now
+
 	if not current_game_instance or not is_instance_valid(camera_3d): return
 	var ray_origin = camera_3d.project_ray_origin(screen_pos)
 	var ray_normal = camera_3d.project_ray_normal(screen_pos)
 	var space_state = get_world_3d().direct_space_state
-	var query = PhysicsRayQueryParameters3D.create(ray_origin, ray_origin + ray_normal * 100.0)
+	var query = PhysicsRayQueryParameters3D.create(ray_origin, ray_origin + ray_normal * 150.0)
 	query.collide_with_areas = true
 	query.collide_with_bodies = true
 	var result = space_state.intersect_ray(query)
-	if result and result.collider and result.collider.has_meta("grid_pos"):
-		var g_pos = result.collider.get_meta("grid_pos")
-		if current_game_instance.has_method("handle_tile_clicked"):
+	if result and result.collider:
+		var target_col = result.collider
+		var g_pos = null
+		if target_col.has_meta("grid_pos"):
+			g_pos = target_col.get_meta("grid_pos")
+		elif target_col.get_parent() and target_col.get_parent().has_meta("grid_pos"):
+			g_pos = target_col.get_parent().get_meta("grid_pos")
+		elif target_col.get_owner() and target_col.get_owner().has_meta("grid_pos"):
+			g_pos = target_col.get_owner().get_meta("grid_pos")
+		
+		if g_pos != null and current_game_instance.has_method("handle_tile_clicked"):
 			current_game_instance.handle_tile_clicked(g_pos)
 
 func setup_3d_tabletop_scene():
 	var table_mesh = BoxMesh.new()
-	table_mesh.size = Vector3(18.0, 0.6, 18.0)
+	table_mesh.size = Vector3(40.0, 0.8, 40.0)
 	var table_inst = MeshInstance3D.new()
 	table_inst.mesh = table_mesh
-	var mat = StandardMaterial3D.new()
-	mat.albedo_color = Color(0.06, 0.09, 0.14)
-	mat.roughness = 0.25
-	mat.metallic = 0.5
-	table_inst.material_override = mat
-	table_inst.position = Vector3(0, -0.3, 0)
+	table_inst.material_override = TextureHelper.get_wood_material(Color(0.12, 0.07, 0.04))
+	table_inst.position = Vector3(0, -0.4, 0)
 	world_3d.add_child(table_inst)
 
 func switch_game(game_id: String, bot_opponent: bool = true):
@@ -268,16 +280,21 @@ func build_topbar_actions():
 	)
 	topbar.add_child(settings_btn)
 
-	# Labels vor Blockieren bewahren
+	# TitleLabel oben rechts positionieren (wie gefordert)
 	var title = topbar.get_node_or_null("TitleLabel")
 	if title:
-		title.offset_left = 410.0
+		title.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		title.offset_left = -340.0
+		title.offset_right = -16.0
+		title.offset_top = 14.0
+		title.offset_bottom = 44.0
+		title.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		title.text = "K-GAMES 2 (3D VULKAN ENGINE)"
 		title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	if status_label:
 		status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	if version_label:
-		version_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func build_modals():
 	var ui = $UI
@@ -497,42 +514,6 @@ func create_dialog_button(txt: String, callback: Callable) -> Button:
 	btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	btn.pressed.connect(callback)
 	return btn
-
-func build_quick_bottom_bar():
-	var ui = $UI
-	bottom_bar = PanelContainer.new()
-	bottom_bar.name = "QuickBottomBar"
-	bottom_bar.mouse_filter = Control.MOUSE_FILTER_PASS
-	bottom_bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	bottom_bar.offset_top = -80
-	bottom_bar.offset_bottom = -10
-	bottom_bar.offset_left = 12
-	bottom_bar.offset_right = -12
-
-	var scroll = ScrollContainer.new()
-	scroll.mouse_filter = Control.MOUSE_FILTER_PASS
-	scroll.custom_minimum_size = Vector2(0, 64)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	bottom_bar.add_child(scroll)
-
-	var hbox = HBoxContainer.new()
-	hbox.mouse_filter = Control.MOUSE_FILTER_PASS
-	hbox.add_theme_constant_override("separation", 10)
-	scroll.add_child(hbox)
-
-	for g in GAME_METADATA:
-		var btn = Button.new()
-		btn.text = g.icon + " " + g.name
-		btn.mouse_filter = Control.MOUSE_FILTER_STOP
-		btn.custom_minimum_size = Vector2(175, 52)
-		var gid = g.id
-		btn.pressed.connect(func():
-			prompt_player_setup(gid)
-		)
-		hbox.add_child(btn)
-
-	ui.add_child(bottom_bar)
 
 func prompt_player_setup(game_id: String):
 	selected_game_to_launch = game_id

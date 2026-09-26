@@ -2,6 +2,8 @@ extends Node3D
 
 class_name Uno3D
 
+const TextureHelper = preload("res://scripts/TextureHelper.gd")
+
 signal status_changed(msg: String)
 signal sound_triggered(sound_name: String)
 
@@ -17,17 +19,14 @@ func _ready():
 	reset_game()
 
 func setup_stage():
-	# Runder Holztisch mit grünem Samt
+	# Runder Holztisch mit feiner Holzmaserung
 	var table_m = CylinderMesh.new()
 	table_m.top_radius = 4.5
 	table_m.bottom_radius = 4.8
 	table_m.height = 0.4
 	var t_inst = MeshInstance3D.new()
 	t_inst.mesh = table_m
-	var t_mat = StandardMaterial3D.new()
-	t_mat.albedo_color = Color(0.12, 0.35, 0.18)
-	t_mat.roughness = 0.5
-	t_inst.material_override = t_mat
+	t_inst.material_override = TextureHelper.get_wood_material(Color(0.18, 0.1, 0.05))
 	t_inst.position = Vector3(0, 0.15, 0)
 	add_child(t_inst)
 

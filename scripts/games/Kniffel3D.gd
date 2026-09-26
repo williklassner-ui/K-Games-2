@@ -2,6 +2,8 @@ extends Node3D
 
 class_name Kniffel3D
 
+const TextureHelper = preload("res://scripts/TextureHelper.gd")
+
 signal status_changed(msg: String)
 signal sound_triggered(sound_name: String)
 
@@ -27,11 +29,7 @@ func setup_stage():
 	tray_mesh.height = 0.5
 	var tray_inst = MeshInstance3D.new()
 	tray_inst.mesh = tray_mesh
-	
-	var mat = StandardMaterial3D.new()
-	mat.albedo_color = Color(0.08, 0.28, 0.15)
-	mat.roughness = 0.45
-	tray_inst.material_override = mat
+	tray_inst.material_override = TextureHelper.get_wood_material(Color(0.08, 0.28, 0.15))
 	tray_inst.position = Vector3(0, 0.2, 0)
 	add_child(tray_inst)
 
@@ -55,10 +53,7 @@ func spawn_die(pos: Vector3, index: int):
 	die.position = pos
 	die.name = "Die_" + str(index)
 
-	var mat = StandardMaterial3D.new()
-	mat.albedo_color = Color(0.96, 0.96, 0.94)
-	mat.roughness = 0.12
-	mat.metallic = 0.05
+	var mat = TextureHelper.get_marble_material(Color(0.96, 0.96, 0.92))
 
 	var m = BoxMesh.new()
 	m.size = Vector3(0.75, 0.75, 0.75)

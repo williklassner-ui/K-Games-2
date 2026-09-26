@@ -2,6 +2,8 @@ extends Node3D
 
 class_name LottiKarotti3D
 
+const TextureHelper = preload("res://scripts/TextureHelper.gd")
+
 signal status_changed(msg: String)
 signal sound_triggered(sound_name: String)
 
@@ -28,14 +30,7 @@ func setup_stage():
 	hill_mesh.height = 2.4
 	var hill_inst = MeshInstance3D.new()
 	hill_inst.mesh = hill_mesh
-
-	var grass_mat = StandardMaterial3D.new()
-	grass_mat.albedo_color = Color(0.24, 0.68, 0.28)
-	grass_mat.roughness = 0.6
-	grass_mat.metallic = 0.05
-	grass_mat.rim_enabled = true
-	grass_mat.rim = 0.3
-	hill_inst.material_override = grass_mat
+	hill_inst.material_override = TextureHelper.get_grass_material(Color(0.24, 0.68, 0.28))
 	hill_inst.position = Vector3(0, 1.2, 0)
 	add_child(hill_inst)
 
@@ -103,17 +98,14 @@ func setup_stage():
 		tile.mesh = tm
 		
 		# Stein-Textur Material mit Wegmarkierung
-		var tmat = StandardMaterial3D.new()
+		var col = Color(0.62, 0.54, 0.44)
 		if i == 0:
-			tmat.albedo_color = Color(0.3, 0.8, 0.4) # Startfeld
+			col = Color(0.3, 0.8, 0.4)
 		elif i == num_fields - 1:
-			tmat.albedo_color = Color(0.95, 0.8, 0.1) # Zielfeld vor Karotte
+			col = Color(0.95, 0.8, 0.1)
 		elif i % 3 == 0:
-			tmat.albedo_color = Color(0.78, 0.68, 0.52) # Stein hell
-		else:
-			tmat.albedo_color = Color(0.62, 0.54, 0.44) # Stein dunkel
-		tmat.roughness = 0.7
-		tile.material_override = tmat
+			col = Color(0.78, 0.68, 0.52)
+		tile.material_override = TextureHelper.get_stone_material(col)
 		tile.position = pos
 
 		# StaticBody für Touch / Klick auf jedes Feld
