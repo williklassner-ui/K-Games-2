@@ -1,7 +1,7 @@
 extends Node3D
 
 # K-Games 2: Native Vulkan 3D Game Suite
-const VERSION = "0.012"
+const VERSION = "0.013"
 
 const SoundManagerScript = preload("res://scripts/SoundManager.gd")
 const TextureHelper = preload("res://scripts/TextureHelper.gd")

@@ -12,54 +12,36 @@ Native 3D Vulkan Game Engine Suite built on **Godot Engine 4.7 (Vulkan Forward+ 
 - Automatische Multiplattform-Builds: Standalone Windows Desktop 64-bit EXE und Android APK
 
 ## Version
-Current Version: **v0.012** (Format: x.xxx)
+Current Version: **v0.013** (Format: x.xxx)
+
+### Changelog v0.013:
+- **Schiffe versenken 3D (Authentische Kriegsschiffe & Versenkt-Anzeige)**:
+  - Vollständiges militärisches Schiffsdesign mit PBR-Marinegrau, Wasserlinien-Rot und Decksbeplankung.
+  - Spezifische Schiffsklassen mit individueller Bewaffnung:
+    - **Flugzeugträger (5 Felder)**: Großes Flugdeck, Centerline-Startbahn, Inselbrücke, Radarmast und geparkte Marine-Jets.
+    - **Schlachtschiff (4 Felder)**: 3 schwere Dreifachtürme in Superfiring-Aufstellung, Pagoden-Kommandoturm und Zwillingstürme.
+    - **Schwerer Kreuzer (3 Felder)**: 2 Doppeltürme, schlanke Rumpfsilhouette und Schornstein.
+    - **U-Boot (3 Felder)**: Zylindrischer Druckkörper, Turm mit Periskop und Deckgeschütz.
+    - **Schnellboot (2 Felder)**: Keilrumpf mit Schnellfeuergeschütz und weißem Radom.
+  - **Versenkte Schiffe auf dem Spielfeld anzeigen**: Sobald ein feindliches Schiff komplett getroffen wurde, erscheint das detaillierte 3D-Kriegsschiff-Wrack direkt auf den besetzten Spielfeldfeldern im Wasser, inklusive Krängung, brennendem Feuer, aufsteigendem Rauch und 3D-Schriftzug ("🔥 VERSENKT: [Name]").
+- **Command & Conquer: Alarmstufe Rot 2 (1:1 Nachbau & Details)**:
+  - Authentische Red Alert 2 Gebäude mit feinen Details und Texturen:
+    - **Sowjetischer Bauhof**: Achteckige Betonplattform, rote Panzerkuppel mit erhabenem Sowjetstern und 2 gelbe Riesenkräne.
+    - **Tesla-Reaktor**: Doppelte Kühltürme mit Warnringen und pulsierendem Plasmakern.
+    - **Sowjetische Kaserne**: Betonbunker mit Panzertor und wehender roter Sowjet-Fahne.
+    - **Waffenfabrik**: Große Montagehalle mit Chevron-Warnstreifentor und Schornsteinen.
+    - **Tesla-Spule**: Pyramidaler Metallsockel, 4 gestapelte Kupfer-Induktionstori und pulsierende 10.000V-Kugel mit elektrischen Entladungsblitzen.
+    - **Erz-Raffinerie**: Doppelsilos und geneigte Entladerampe.
+  - **Kirov-Luftschiff**: Legendärer Kirov-Zeppelin mit Haifischmaul-Nose-Art schwebt als ständige Bedrohung über dem Schlachtfeld.
+  - **Rhino-Schwerpanzer & War-Miner**: Detaillierte Kettenlaufwerke, 120mm Kanone mit Mündungsbremse und Heckfässer; automatischer Erntezyklus des Sammlers mit rotierendem Schneckenbohrer, Golderz-Abbau und +$500 Credits beim Abladen.
+  - **C&C EVA Sidebar HUD**: Digitaler Credits-Zähler ($), Bau-Menü für Rhino-Panzer ($900), Tesla-Schlag ($1200) und Angriffsbefehle.
+- **Lotti Karotti 3D (Runder Bergpfad, echte Löcher & 3D-Kartenziehen)**:
+  - **Sichtbarer Bergpfad**: Der Weg windet sich nun als durchgehende, sichtbare Stein- und Erdstraße um den grünen Hügel; die 24 Felder haben weiten Abstand und überlagern sich an keiner Stelle.
+  - **Echte Schacht-Löcher**: Die Fallenfelder besitzen nun einen echten, tiefen dunklen Schacht mit Ringkragen. Bei Karottendrehungen klappt die Falltür 90° nach unten weg, und ein getroffener Hase stürzt sichtbar tief in das Loch hinab.
+  - **Runde organische Karotte**: Völlig runde, bauchige Karottenform mit Querringen, samtigem Orange-Glanz und 6 geschwungenen grünen Blättern.
+  - **3D-Kartenstapel mit Ziehanimation**: Interaktiver 3D-Kartenstapel und Ablagefach auf Holztisch; beim Ziehen hebt sich die 3D-Karte in die Luft, rotiert 180° zur Kamera und zeigt die offiziellen Lotti-Karotti-Symbole (1, 2, 3 Schritte oder Karottendrehung).
 
 ### Changelog v0.012:
 - **High-Fidelity Audio-System (Absolut kein Gepiepse)**:
   - Vollständige Umstellung auf kristallklare **16-Bit PCM Studioqualität (44.100 Hz / CD-Qualität)**.
-  - Das vorherige 8-Bit Lo-Fi-System und alle künstlichen Sinus-Pieptöne wurden vollständig verbannt.
-  - **Dezenter haptischer UI-Klick (`click`)**: Weicher, akustisch bedämpfter Soft-Pop ohne tonale Tonhöhe (wie edle Smartphone-/Kamera-Haptik).
-  - **Edler Marimba- / Holz-Akzent (`select`)**: Warmer Rosewood-Resonanzklang mit weichem Filzschlägel-Anschlag statt Synthesizer-Pieps.
-  - **Akustischer Holz-Figurenzug (`move`)**: Echter haptischer Holzkorpus-Aufsetzer ("Tock") auf samtunterlegtem Brett.
-  - **Echtes Würfeln (`dice`)**: Realistische Kaskade aus 5 physikalischen Aufprall- und Taumelereignissen mit nachklingender Tischresonanz.
-  - **Karten-Gleiten & Schnappen (`card`)**: Authentisches Papierreibungs-Gleiten mit anschließendem elastischem Kartenschnappen.
-  - **Kanonenschuss & Wucht-Explosion (`shoot`)**: Tieffrequente Druckwelle mit Sub-Bass (35-120 Hz) und realistischem Donnergrollen.
-  - **Orchestraler Sieges-Akkord (`win`)**: Strahlende F-Dur-Glockenakkord-Kaskade mit physikalischen Metallobertönen.
-  - **Wasser-Plätschern (`splash` / `miss`)**: Hydrodynamischer Wassereintritt und Tropfenspritzer für Schiffe versenken.
-  - **Karotten-Drehung (`twist`)**: Mechanisches Klick-Klack mit doppelter Rastung für Lotti Karotti.
-  - **Sanfter Niederlage-Klang (`loss`)**: Dezenter, respektvoller D-Moll-Akustikgong.
-- **Bugfixes & Stabilität**:
-  - `SnakesAndLadders3D.gd`: Vererbung von `Node3D` korrigiert.
-  - `Chess3D.gd`: Deklaration von `ui_layer` ergänzt.
-
-### Changelog v0.011:
-- **Navigation & Menüsteuerung**:
-  - Alle Vollbild-Menüs, Einstellungen, Spielauswahl und Player-Setup schließen sich nun zuverlässig mit Zurücktaste (`KEY_BACK` auf Android) oder `ESC`.
-  - Die Buttons "Alle Spiele" und "Settings" wurden aus der oberen Leiste entfernt und direkt ins Hauptmenü integriert.
-  - Oben links befindet sich nur noch der übersichtliche `☰ Menü` Button.
-- **Schiffe versenken (Battleship 3D)**:
-  - Vollständiger Fix der Siegeserkennung: Schiffe werden garantiert kollisionsfrei platziert und das Spiel endet jetzt zuverlässig, sobald alle gegnerischen Schiffssegmente versenkt wurden.
-  - Statistiken (Treffer, Fehlschüsse, Genauigkeit) und Sieg/Niederlage-Modal mit Neustartfunktion hinzugefügt.
-- **Scotland Yard 3D**:
-  - Vollständige London-Stadtstruktur mit Straßennetzwerk, Hyde Park, Regent's Park, St. James's Park und 4 detailreichen Themse-Brücken (Tower Bridge, Westminster Bridge, London Bridge, Waterloo Bridge).
-  - Die Themse (River Thames) ist nun als kontinuierliches, organisch fließendes Wasser-Mesh via `SurfaceTool` (Cubic Splines) umgesetzt – keine störenden Einzelblöcke mehr.
-  - Vollständiges U-Bahn-, Bus- und Taxi-Netzwerk mit Ticketverwaltung und Sieg/Niederlage-Bedingungen.
-- **Lotti Karotti 3D**:
-  - Großer 3D-Hügel mit 24 sichtbaren Trittfeldern auf 4 Ebenen.
-  - 4 interaktive Falltüren auf den Feldern [4, 9, 14, 19], die sich bei Karottendrehungen dynamisch öffnen.
-  - 3D-Kartenstapel mit interaktiver Zieh-Animation sowie Kartenanzeige im HUD (1, 2, 3 Schritte oder Karottendrehung).
-  - 4 3D-Hasen je Spieler mit lebendiger Hüpf-Animation und Ziel-Erkennung auf der Riesenkarotte.
-- **Universelle 3D-Würfel**:
-  - Zentrales `DiceHelper`-Modul für physikalische 3D-Würfel mit echten 6-Augen-Texturflächen und Würfel-Roll-Animationen.
-  - Integriert in Mensch ärgere Dich nicht, Monopoly, Kniffel, Siedler von Katan, Risiko und Snakes & Ladders.
-- **Mensch ärgere Dich nicht 3D**:
-  - Authentisches 22x22 Kreuz-Spielfeld mit 40 Rundkurs-Feldern, 4 Eckhäusern und je 4 Zielfeldern.
-  - 3D-Würfelwurf mit 6er-Regel, Rausschlagen und vollständigen KI-Zügen.
-- **Monopoly 3D & Siedler von Katan 3D**:
-  - Enorm vergrößerte Spielfelder mit originalgetreuen Proportionen, 2-Würfel-System mit Pasch-Regel, Straßen-, Haus- und Hotelbau.
-- **Kniffel 3D**:
-  - 5 physikalische 3D-Würfel mit Halten-/Freigeben-Funktion und originalem 13-Kategorien-Wertungsblock.
-- **Echtzeit- & Action-Spiele (Tetris, Space Invaders, Alarmstufe Rot 2)**:
-  - Vollwertige Gameplay-Loops statt Standbilder: Tetris mit Schwerkraft & Reihenauflösung, Space Invaders mit marschierenden Aliens, Geschossen & Bunkern, RA2 mit Panzern, Mündungsfeuer, Projektilen und animierten Tesla-Spulen.
-- **Regel- und Siegprüfungen**:
-  - Alle 17 Spiele wurden auf korrekte Spielregeln, Sieg- und Niederlage-Bedingungen und Responsive Touch/Maus-Steuerung überprüft.
+  - Weicher haptischer UI-Klick (`click`), Marimba-Holzakzent (`select`), schwerer Holzaufsetzer (`move`), physikalisches Würfeln (`dice`), Kartenschnappen (`card`), wuchtige Explosion (`shoot`), F-Dur Glockenkaskade (`win`), Wasserplätschern (`splash`) und mechanische Karotten-Drehung (`twist`).
