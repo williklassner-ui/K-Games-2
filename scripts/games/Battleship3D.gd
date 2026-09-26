@@ -123,16 +123,18 @@ func setup_stage():
 	spawn_warship(Vector3(6.2, 0.42, -1.8), 3, "U-Boot", 90)
 	spawn_warship(Vector3(6.2, 0.42, 1.8), 2, "Zerstörer", 90)
 
+var game_over_panel: Control = null
+
 func setup_touch_ui():
 	ui_layer = CanvasLayer.new()
 	add_child(ui_layer)
 
 	var panel = PanelContainer.new()
 	panel.anchors_preset = Control.PRESET_BOTTOM_RIGHT
-	panel.offset_left = -260
+	panel.offset_left = -280
 	panel.offset_top = -140
 	panel.offset_right = -15
-	panel.offset_bottom = -75
+	panel.offset_bottom = -20
 	ui_layer.add_child(panel)
 
 	var vbox = VBoxContainer.new()
@@ -153,6 +155,44 @@ func setup_touch_ui():
 	)
 	vbox.add_child(fire_rnd_btn)
 
+	var reset_btn = Button.new()
+	reset_btn.text = "🔄 Neues Spiel"
+	reset_btn.custom_minimum_size = Vector2(0, 38)
+	reset_btn.pressed.connect(reset_game)
+	vbox.add_child(reset_btn)
+
+	# Game Over Modal
+	game_over_panel = PanelContainer.new()
+	game_over_panel.anchors_preset = Control.PRESET_CENTER
+	game_over_panel.offset_left = -200
+	game_over_panel.offset_top = -120
+	game_over_panel.offset_right = 200
+	game_over_panel.offset_bottom = 120
+	game_over_panel.visible = false
+	ui_layer.add_child(game_over_panel)
+
+	var go_vbox = VBoxContainer.new()
+	go_vbox.add_theme_constant_override("separation", 10)
+	game_over_panel.add_child(go_vbox)
+
+	var go_title = Label.new()
+	go_title.name = "GameOverTitle"
+	go_title.text = "🏆 SIEG!"
+	go_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	go_vbox.add_child(go_title)
+
+	var go_stats = Label.new()
+	go_stats.name = "GameOverStats"
+	go_stats.text = ""
+	go_stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	go_vbox.add_child(go_stats)
+
+	var go_btn = Button.new()
+	go_btn.text = "🔄 Nochmal spielen"
+	go_btn.custom_minimum_size = Vector2(0, 48)
+	go_btn.pressed.connect(reset_game)
+	go_vbox.add_child(go_btn)
+
 func reset_game():
 	enemy_grid.clear()
 	for x in range(10):
@@ -161,38 +201,50 @@ func reset_game():
 			col.append(0)
 		enemy_grid.append(col)
 
-	total_enemy_ship_cells = 0
 	var ship_lengths = [5, 4, 3, 3, 2]
 	for slen in ship_lengths:
-		place_enemy_ship_random(slen)
-		total_enemy_ship_cells += slen
+		var placed = false
+		var safety = 0
+		while not placed and safety < 500:
+			safety += 1
+			placed = place_enemy_ship_random(slen)
+
+	# Zähle die exakt platzierten Schiffsfelder auf dem Gitter
+	total_enemy_ship_cells = 0
+	for x in range(10):
+		for z in range(10):
+			if enemy_grid[x][z] == 1:
+				total_enemy_ship_cells += 1
 
 	enemy_hits = 0
 	shots_fired = 0
+	player_ships_left = 5
 	turn = "player"
-	emit_signal("status_changed", "Schiffe versenken 3D: Tippe/klicke auf ein Gitterfeld (10x10) zum Feuern!")
+	if game_over_panel:
+		game_over_panel.visible = false
 
-func place_enemy_ship_random(length: int):
-	var placed = false
-	var attempts = 0
-	while not placed and attempts < 100:
-		attempts += 1
-		var horizontal = randf() > 0.5
-		var sx = randi_range(0, 9 - (length if horizontal else 0))
-		var sz = randi_range(0, 9 - (0 if horizontal else length))
-		var fits = true
-		for i in range(length):
-			var cx = sx + (i if horizontal else 0)
-			var cz = sz + (0 if horizontal else i)
-			if enemy_grid[cx][cz] != 0:
-				fits = false
-				break
-		if fits:
-			for i in range(length):
-				var cx = sx + (i if horizontal else 0)
-				var cz = sz + (0 if horizontal else i)
-				enemy_grid[cx][cz] = 1
-			placed = true
+	# Vorherige Treffermarkierungen auf den Kacheln entfernen
+	for tile in tile_nodes.values():
+		for child in tile.get_children():
+			if child is MeshInstance3D and child.name.begins_with("Marker"):
+				child.queue_free()
+
+	emit_signal("status_changed", "Schiffe versenken 3D: Bereit! 5 Kriegsschiffe (" + str(total_enemy_ship_cells) + " Segmente) geortet. Tippe zum Feuern!")
+
+func place_enemy_ship_random(length: int) -> bool:
+	var horizontal = randf() > 0.5
+	var sx = randi_range(0, 9 - (length if horizontal else 0))
+	var sz = randi_range(0, 9 - (0 if horizontal else length))
+	for i in range(length):
+		var cx = sx + (i if horizontal else 0)
+		var cz = sz + (0 if horizontal else i)
+		if enemy_grid[cx][cz] != 0:
+			return false
+	for i in range(length):
+		var cx = sx + (i if horizontal else 0)
+		var cz = sz + (0 if horizontal else i)
+		enemy_grid[cx][cz] = 1
+	return true
 
 func handle_tile_clicked(grid_pos: Vector2i):
 	if turn != "player": return
@@ -214,8 +266,7 @@ func handle_tile_clicked(grid_pos: Vector2i):
 		spawn_explosion(tile.position + Vector3(0, 0.4, 0))
 		spawn_hit_marker(tile, true)
 		if enemy_hits >= total_enemy_ship_cells:
-			emit_signal("sound_triggered", "win")
-			emit_signal("status_changed", "SIEG! Alle feindlichen Kriegsschiffe versenkt in " + str(shots_fired) + " Schüssen!")
+			show_game_over(true)
 			return
 		else:
 			emit_signal("status_changed", "💥 TREFFER & EXPLOSION! Schiff getroffen! (" + str(enemy_hits) + "/" + str(total_enemy_ship_cells) + ")")
@@ -231,17 +282,40 @@ func handle_tile_clicked(grid_pos: Vector2i):
 		else:
 			turn = "player"
 
+func show_game_over(won: bool):
+	turn = "game_over"
+	if game_over_panel:
+		game_over_panel.visible = true
+		var t_lbl = game_over_panel.find_child("GameOverTitle", true, false) as Label
+		var s_lbl = game_over_panel.find_child("GameOverStats", true, false) as Label
+		if won:
+			emit_signal("sound_triggered", "win")
+			var acc = int((float(enemy_hits) / float(max(1, shots_fired))) * 100.0)
+			if t_lbl: t_lbl.text = "🏆 GLORREICHER SIEG!"
+			if s_lbl: s_lbl.text = "Alle feindlichen Kriegsschiffe versenkt!\n• Abgefeuerte Schüsse: " + str(shots_fired) + "\n• Trefferquote: " + str(acc) + "%\n• Eigene Schiffe intakt: " + str(player_ships_left) + "/5"
+			emit_signal("status_changed", "SIEG! Alle Schiffe versenkt in " + str(shots_fired) + " Schüssen!")
+		else:
+			emit_signal("sound_triggered", "shoot")
+			if t_lbl: t_lbl.text = "💀 FLOTTE VERSENKT - NIEDERLAGE!"
+			if s_lbl: s_lbl.text = "Deine Kriegsschiffe wurden vernichtet!\n• Feindliche Schiffe getroffen: " + str(enemy_hits) + "/" + str(total_enemy_ship_cells)
+			emit_signal("status_changed", "NIEDERLAGE! Deine Flotte wurde versenkt!")
+
 func ai_take_shot():
+	if turn != "ai": return
 	emit_signal("sound_triggered", "shoot")
 	var hit_player = (randf() > 0.6)
-	turn = "player"
 	if hit_player:
+		player_ships_left -= 1
 		if not warships.is_empty():
 			var hit_ship = warships.pick_random()
 			spawn_explosion(hit_ship.position + Vector3(0, 0.4, 0))
-		emit_signal("status_changed", "⚠️ Feindfeuer! Ein eigenes Schiff wurde getroffen! Du bist am Zug.")
+		if player_ships_left <= 0:
+			show_game_over(false)
+			return
+		emit_signal("status_changed", "⚠️ Feindfeuer! Ein eigenes Schiff versenkt (" + str(player_ships_left) + " übrig)! Du bist am Zug.")
 	else:
 		emit_signal("status_changed", "Gegner feuert ins Wasser vorbei! Du bist am Zug.")
+	turn = "player"
 
 func spawn_explosion(pos: Vector3):
 	var exp_node = Node3D.new()

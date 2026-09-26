@@ -146,6 +146,9 @@ func handle_tile_clicked(grid_pos: Vector2i):
 	else:
 		play_card()
 
+var bot_cards: int = 7
+var victory_modal: PanelContainer = null
+
 func play_card():
 	if player_cards <= 0: return
 	player_cards -= 1
@@ -153,17 +156,42 @@ func play_card():
 	emit_signal("sound_triggered", "card")
 	render_table_cards()
 
-	if player_cards == 0:
-		emit_signal("sound_triggered", "win")
-		emit_signal("status_changed", "GEWONNEN! Alle Extreme-Karten losgeworden!")
+	if player_cards <= 0:
+		show_extreme_end(true)
+		return
 	else:
 		emit_signal("status_changed", "Karte abgelegt! Verbleibende Handkarten: " + str(player_cards))
+		get_tree().create_timer(0.7).timeout.connect(bot_extreme_turn)
+
+func bot_extreme_turn():
+	if bot_cards <= 0: return
+	if randf() > 0.4:
+		bot_cards -= 1
+		emit_signal("sound_triggered", "card")
+		if bot_cards <= 0:
+			show_extreme_end(false)
+			return
+		emit_signal("status_changed", "Bot legt eine Karte ab (" + str(bot_cards) + " übrig). Du bist am Zug!")
+	else:
+		# Bot drückt Launcher
+		press_launcher_bot()
+
+func press_launcher_bot():
+	emit_signal("sound_triggered", "click")
+	var outcome = randi_range(0, 3)
+	if outcome == 0:
+		emit_signal("status_changed", "Bot drückt den Launcher: Keine Karten ausgeworfen!")
+	else:
+		bot_cards += outcome
+		emit_signal("sound_triggered", "shoot")
+		emit_signal("status_changed", "BZZT! Launcher spuckt " + str(outcome) + " Strafkarten für den Bot aus!")
 
 func press_launcher():
 	emit_signal("sound_triggered", "click")
-	var tween = create_tween()
-	tween.tween_property(launcher_button, "position:y", 0.68, 0.1)
-	tween.tween_property(launcher_button, "position:y", 0.75, 0.1)
+	if is_instance_valid(launcher_button):
+		var tween = create_tween()
+		tween.tween_property(launcher_button, "position:y", 0.68, 0.1)
+		tween.tween_property(launcher_button, "position:y", 0.75, 0.1)
 
 	var outcome = randi_range(0, 3)
 	if outcome == 0:
@@ -174,3 +202,45 @@ func press_launcher():
 		player_cards += outcome
 		render_table_cards()
 		emit_signal("status_changed", "BZZT! Der Launcher spuckt " + str(outcome) + " Strafkarten aus! Handkarten: " + str(player_cards))
+
+	get_tree().create_timer(0.7).timeout.connect(bot_extreme_turn)
+
+func show_extreme_end(won: bool):
+	emit_signal("sound_triggered", "win" if won else "shoot")
+	if not victory_modal:
+		victory_modal = PanelContainer.new()
+		victory_modal.anchors_preset = Control.PRESET_CENTER
+		victory_modal.offset_left = -200
+		victory_modal.offset_top = -100
+		victory_modal.offset_right = 200
+		victory_modal.offset_bottom = 100
+		ui_layer.add_child(victory_modal)
+
+		var vbox = VBoxContainer.new()
+		vbox.add_theme_constant_override("separation", 10)
+		victory_modal.add_child(vbox)
+
+		var title = Label.new()
+		title.name = "EndTitle"
+		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vbox.add_child(title)
+
+		var btn = Button.new()
+		btn.text = "🔄 Neues Spiel"
+		btn.custom_minimum_size = Vector2(0, 46)
+		btn.pressed.connect(func():
+			victory_modal.visible = false
+			player_cards = 7
+			bot_cards = 7
+			render_table_cards()
+		)
+		vbox.add_child(btn)
+
+	victory_modal.visible = true
+	var t_lbl = victory_modal.find_child("EndTitle", true, false) as Label
+	if won:
+		if t_lbl: t_lbl.text = "🏆 UNO EXTREME SIEG!"
+		emit_signal("status_changed", "🏆 GEWONNEN! Alle Extreme-Karten abgeworfen!")
+	else:
+		if t_lbl: t_lbl.text = "💀 BOT HAT GEWONNEN!"
+		emit_signal("status_changed", "Der Bot hat alle Karten abgeworfen!")

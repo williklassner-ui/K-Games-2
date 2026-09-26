@@ -270,6 +270,14 @@ func execute_move(from: Vector2i, to: Vector2i):
 		target_node.queue_free()
 		piece_nodes.erase(to)
 
+	# König geschlagen -> Spielende
+	if target_code == "b_k":
+		show_chess_game_over(true)
+		return
+	elif target_code == "w_k":
+		show_chess_game_over(false)
+		return
+
 	# Figur bewegen
 	grid[to.x][to.y] = moving_code
 	grid[from.x][from.y] = ""
@@ -314,6 +322,40 @@ func execute_move(from: Vector2i, to: Vector2i):
 	if current_turn == "b" and is_bot_opponent:
 		get_tree().create_timer(0.6).timeout.connect(ai_make_move)
 
+func show_chess_game_over(white_won: bool):
+	emit_signal("sound_triggered", "win" if white_won else "shoot")
+	var winner_str = "Weiß (Spieler)" if white_won else "Schwarz (Bot)"
+	emit_signal("status_changed", "🏆 SCHACHMATT! " + winner_str + " gewinnt das Spiel!")
+	if not ui_layer:
+		ui_layer = CanvasLayer.new()
+		add_child(ui_layer)
+	
+	var modal = PanelContainer.new()
+	modal.anchors_preset = Control.PRESET_CENTER
+	modal.offset_left = -200
+	modal.offset_top = -100
+	modal.offset_right = 200
+	modal.offset_bottom = 100
+	ui_layer.add_child(modal)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	modal.add_child(vbox)
+
+	var title = Label.new()
+	title.text = "🏆 " + winner_str.to_upper() + " GEWINNT!"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(title)
+
+	var btn = Button.new()
+	btn.text = "🔄 Neues Schachspiel"
+	btn.custom_minimum_size = Vector2(0, 46)
+	btn.pressed.connect(func():
+		modal.queue_free()
+		reset_game()
+	)
+	vbox.add_child(btn)
+
 func ai_make_move():
 	if current_turn != "b": return
 	var all_moves = []
@@ -325,7 +367,7 @@ func ai_make_move():
 					all_moves.append({"from": Vector2i(x, z), "to": m})
 
 	if all_moves.is_empty():
-		emit_signal("status_changed", "Schachmatt oder Patt! Weiß gewinnt!")
+		show_chess_game_over(true)
 		return
 
 	# Bevorzuge Schlagzüge

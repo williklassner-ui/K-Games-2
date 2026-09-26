@@ -1,7 +1,7 @@
 extends Node3D
 
 # K-Games 2: Native Vulkan 3D Game Suite
-const VERSION = "0.010"
+const VERSION = "0.011"
 
 const SoundManagerScript = preload("res://scripts/SoundManager.gd")
 const TextureHelper = preload("res://scripts/TextureHelper.gd")
@@ -78,6 +78,15 @@ const GAME_METADATA = [
 	{"id": "durak", "name": "Durak 3D", "icon": "🂡", "cat": "Kartenspiel"}
 ]
 
+func _notification(what):
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		# Android Hardware-Zurücktaste
+		play_sound("click")
+		if is_modal_open():
+			close_all_modals()
+		else:
+			toggle_main_menu()
+
 func _ready():
 	print("=== K-Games 2 Suite v", VERSION, " Initialized ===")
 	sound_mgr = SoundManagerScript.new()
@@ -102,6 +111,17 @@ func play_sound(s_name: String):
 		sound_mgr.play(s_name)
 
 func _unhandled_input(event):
+	# Schließen aller Menüs/Settings mit ESC oder Zurücktaste (Windows & Android)
+	if event is InputEventKey and event.pressed:
+		if event.keycode == KEY_ESCAPE or event.keycode == KEY_BACK:
+			play_sound("click")
+			if is_modal_open():
+				close_all_modals()
+			else:
+				toggle_main_menu()
+			get_viewport().set_input_as_handled()
+			return
+
 	if is_modal_open():
 		return
 
@@ -246,39 +266,17 @@ func build_topbar_actions():
 	var topbar = $UI/TopBar
 	topbar.mouse_filter = Control.MOUSE_FILTER_STOP
 	
-	# Menü-Buttons links & rechts in der TopBar (Optimiert für Touch & Maus: 48px Touch-Target)
+	# Nur noch der Menü-Button in der TopBar (Spiele & Settings ins Menü verschoben)
 	var menu_btn = Button.new()
 	menu_btn.text = "☰ Menü"
-	menu_btn.custom_minimum_size = Vector2(100, 44)
-	menu_btn.position = Vector2(12, 8)
+	menu_btn.custom_minimum_size = Vector2(110, 44)
+	menu_btn.position = Vector2(14, 8)
 	menu_btn.mouse_filter = Control.MOUSE_FILTER_STOP
 	menu_btn.pressed.connect(func():
 		play_sound("click")
 		toggle_main_menu()
 	)
 	topbar.add_child(menu_btn)
-
-	var games_btn = Button.new()
-	games_btn.text = "🎮 Alle Spiele (17)"
-	games_btn.custom_minimum_size = Vector2(150, 44)
-	games_btn.position = Vector2(122, 8)
-	games_btn.mouse_filter = Control.MOUSE_FILTER_STOP
-	games_btn.pressed.connect(func():
-		play_sound("click")
-		toggle_game_selection()
-	)
-	topbar.add_child(games_btn)
-
-	var settings_btn = Button.new()
-	settings_btn.text = "⚙️ Settings"
-	settings_btn.custom_minimum_size = Vector2(110, 44)
-	settings_btn.position = Vector2(282, 8)
-	settings_btn.mouse_filter = Control.MOUSE_FILTER_STOP
-	settings_btn.pressed.connect(func():
-		play_sound("click")
-		toggle_settings()
-	)
-	topbar.add_child(settings_btn)
 
 	# TitleLabel oben rechts positionieren (wie gefordert)
 	var title = topbar.get_node_or_null("TitleLabel")
@@ -300,15 +298,18 @@ func build_modals():
 	var ui = $UI
 
 	# 1. Hauptmenü Modal (Komplette Fenstergröße, zentriert)
-	var mm_data = create_fullscreen_modal_panel("K-Games 2 - Hauptmenü")
-	main_menu_modal = mm_data["container"]
-	var mm_vbox = mm_data["vbox"]
-
-	var btn_continue = create_dialog_button("▶️ Weiterspielen", func():
+	var mm_data = create_fullscreen_modal_panel("K-Games 2 - Hauptmenü", func():
 		play_sound("click")
 		close_all_modals()
 	)
-	var btn_all_games = create_dialog_button("🎮 Spielauswahl öffnen (17 Spiele)", func():
+	main_menu_modal = mm_data["container"]
+	var mm_vbox = mm_data["vbox"]
+
+	var btn_continue = create_dialog_button("▶️ Weiterspielen / Zurück (ESC)", func():
+		play_sound("click")
+		close_all_modals()
+	)
+	var btn_all_games = create_dialog_button("🎮 Spielauswahl öffnen (17 Spiele in 3D)", func():
 		play_sound("click")
 		toggle_game_selection()
 	)
@@ -333,7 +334,10 @@ func build_modals():
 	ui.add_child(main_menu_modal)
 
 	# 2. Settings Modal (Komplette Fenstergröße, zentriert)
-	var s_data = create_fullscreen_modal_panel("⚙️ App-Einstellungen (Settings)")
+	var s_data = create_fullscreen_modal_panel("⚙️ App-Einstellungen (Settings)", func():
+		play_sound("click")
+		toggle_main_menu()
+	)
 	settings_modal = s_data["container"]
 	var s_vbox = s_data["vbox"]
 
@@ -367,15 +371,18 @@ func build_modals():
 	info_lbl.text = "\nApp Info:\n• Version: v" + VERSION + " (Format: x.xxx)\n• Render-Engine: Godot 4.7 (Vulkan Forward+ / Mobile)\n• Multiplattform: Windows 64-bit & Android APK\n• Entwickler: Willi Klassner"
 	s_vbox.add_child(info_lbl)
 
-	var s_close = create_dialog_button("Schließen", func():
+	var s_close = create_dialog_button("◀️ Zurück zum Hauptmenü (ESC)", func():
 		play_sound("click")
-		close_all_modals()
+		toggle_main_menu()
 	)
 	s_vbox.add_child(s_close)
 	ui.add_child(settings_modal)
 
 	# 3. Spielauswahl Modal (Komplette Fenstergröße, zentriert mit Scroll-Grid)
-	var gs_data = create_fullscreen_modal_panel("🎮 Spielauswahl - 17 Klassiker in 3D")
+	var gs_data = create_fullscreen_modal_panel("🎮 Spielauswahl - 17 Klassiker in 3D", func():
+		play_sound("click")
+		toggle_main_menu()
+	)
 	game_selection_modal = gs_data["container"]
 	var gs_vbox = gs_data["vbox"]
 
@@ -405,15 +412,18 @@ func build_modals():
 		grid.add_child(card)
 
 	gs_vbox.add_child(scroll)
-	var gs_close = create_dialog_button("Schließen", func():
+	var gs_close = create_dialog_button("◀️ Zurück zum Hauptmenü (ESC)", func():
 		play_sound("click")
-		close_all_modals()
+		toggle_main_menu()
 	)
 	gs_vbox.add_child(gs_close)
 	ui.add_child(game_selection_modal)
 
 	# 4. Vor Spielstart Spieler- & Bot-Auswahl Modal (Komplette Fenstergröße, zentriert)
-	var ps_data = create_fullscreen_modal_panel("👥 Spielmodus auswählen: Einzelspieler oder Mehrspieler")
+	var ps_data = create_fullscreen_modal_panel("👥 Spielmodus auswählen: Einzelspieler oder Mehrspieler", func():
+		play_sound("click")
+		toggle_game_selection()
+	)
 	player_setup_modal = ps_data["container"]
 	var ps_vbox = ps_data["vbox"]
 
@@ -435,7 +445,7 @@ func build_modals():
 	)
 	ps_vbox.add_child(btn_human)
 
-	var btn_ps_cancel = create_dialog_button("◀️ Zurück zur Spielauswahl", func():
+	var btn_ps_cancel = create_dialog_button("◀️ Zurück zur Spielauswahl (ESC)", func():
 		play_sound("click")
 		toggle_game_selection()
 	)
@@ -444,7 +454,7 @@ func build_modals():
 
 	close_all_modals()
 
-func create_fullscreen_modal_panel(title_str: String) -> Dictionary:
+func create_fullscreen_modal_panel(title_str: String, back_callback: Callable = Callable()) -> Dictionary:
 	var container = Control.new()
 	container.set_anchors_preset(Control.PRESET_FULL_RECT)
 	container.offset_left = 0
@@ -481,9 +491,9 @@ func create_fullscreen_modal_panel(title_str: String) -> Dictionary:
 	margin.offset_right = 0
 	margin.offset_bottom = 0
 	margin.add_theme_constant_override("margin_left", 24)
-	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_top", 16)
 	margin.add_theme_constant_override("margin_right", 24)
-	margin.add_theme_constant_override("margin_bottom", 20)
+	margin.add_theme_constant_override("margin_bottom", 16)
 	margin.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.add_child(margin)
 
@@ -491,15 +501,46 @@ func create_fullscreen_modal_panel(title_str: String) -> Dictionary:
 	vbox.name = "VBox"
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	vbox.add_theme_constant_override("separation", 14)
+	vbox.add_theme_constant_override("separation", 12)
 	vbox.mouse_filter = Control.MOUSE_FILTER_STOP
 	margin.add_child(vbox)
+
+	# Header-Leiste mit Zurück-Button, Titel und Schließen-Kreuz
+	var header_hbox = HBoxContainer.new()
+	header_hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_hbox.add_theme_constant_override("separation", 12)
+
+	var top_back_btn = Button.new()
+	top_back_btn.text = "◀️ Zurück (ESC)"
+	top_back_btn.custom_minimum_size = Vector2(130, 42)
+	top_back_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	top_back_btn.pressed.connect(func():
+		play_sound("click")
+		if back_callback.is_valid():
+			back_callback.call()
+		else:
+			close_all_modals()
+	)
+	header_hbox.add_child(top_back_btn)
 
 	var title = Label.new()
 	title.text = title_str
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vbox.add_child(title)
+	header_hbox.add_child(title)
+
+	var top_close_btn = Button.new()
+	top_close_btn.text = "✖ Schließen"
+	top_close_btn.custom_minimum_size = Vector2(110, 42)
+	top_close_btn.mouse_filter = Control.MOUSE_FILTER_STOP
+	top_close_btn.pressed.connect(func():
+		play_sound("click")
+		close_all_modals()
+	)
+	header_hbox.add_child(top_close_btn)
+
+	vbox.add_child(header_hbox)
 
 	var sep = HSeparator.new()
 	sep.mouse_filter = Control.MOUSE_FILTER_IGNORE

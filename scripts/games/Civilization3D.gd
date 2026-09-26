@@ -242,6 +242,48 @@ func setup_game_ui():
 	turn_btn.pressed.connect(next_turn)
 	vbox.add_child(turn_btn)
 
+	# Victory Modal
+	victory_modal = PanelContainer.new()
+	victory_modal.anchors_preset = Control.PRESET_CENTER
+	victory_modal.offset_left = -220
+	victory_modal.offset_top = -120
+	victory_modal.offset_right = 220
+	victory_modal.offset_bottom = 120
+	victory_modal.visible = false
+	ui_layer.add_child(victory_modal)
+
+	var vm_vbox = VBoxContainer.new()
+	vm_vbox.add_theme_constant_override("separation", 10)
+	victory_modal.add_child(vm_vbox)
+
+	var vm_title = Label.new()
+	vm_title.name = "VictoryTitle"
+	vm_title.text = "🏆 ZIVILISATIONS-SIEG!"
+	vm_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vm_vbox.add_child(vm_title)
+
+	var vm_desc = Label.new()
+	vm_desc.name = "VictoryDesc"
+	vm_desc.text = ""
+	vm_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vm_vbox.add_child(vm_desc)
+
+	var vm_btn = Button.new()
+	vm_btn.text = "🔄 Neues Spiel"
+	vm_btn.custom_minimum_size = Vector2(0, 48)
+	vm_btn.pressed.connect(reset_game)
+	vm_vbox.add_child(vm_btn)
+
+var victory_modal: PanelContainer = null
+
+func reset_game():
+	gold = 150
+	science = 40
+	turn = 1
+	if victory_modal: victory_modal.visible = false
+	emit_signal("status_changed", "Civilization CtP2 3D: Bereit! Gründe Städte und erforsche Technologien.")
+	update_ui()
+
 func handle_tile_clicked(grid_pos: Vector2i):
 	if not tiles_data.has(grid_pos): return
 	selected_tile = grid_pos
@@ -291,6 +333,15 @@ func next_turn():
 	science += 20 + cities.size() * 10
 	emit_signal("sound_triggered", "click")
 	emit_signal("status_changed", "Runde " + str(turn) + " beginnt! +Gold und Forschung gutgeschrieben.")
+
+	if science >= 300:
+		emit_signal("sound_triggered", "win")
+		if victory_modal:
+			victory_modal.visible = true
+			var t_lbl = victory_modal.find_child("VictoryTitle", true, false) as Label
+			var d_lbl = victory_modal.find_child("VictoryDesc", true, false) as Label
+			if t_lbl: t_lbl.text = "🚀 WELTRAUMSIEG!"
+			if d_lbl: d_lbl.text = "300 Forschung erreicht! Raumschiff nach Alpha Centauri gestartet!"
 
 	if is_bot_opponent:
 		bot_expand()

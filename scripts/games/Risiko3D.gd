@@ -3,6 +3,7 @@ extends Node3D
 class_name Risiko3D
 
 const TextureHelper = preload("res://scripts/TextureHelper.gd")
+const DiceHelper = preload("res://scripts/DiceHelper.gd")
 
 signal status_changed(msg: String)
 signal sound_triggered(sound_name: String)
@@ -13,7 +14,12 @@ var target_attack_index: int = -1
 var is_bot_opponent: bool = true
 var player_armies_reserve: int = 15
 var current_turn: String = "player" # "player" oder "ai"
+
+var att_dice_nodes: Array = []
+var def_dice_nodes: Array = []
+
 var ui_layer: CanvasLayer = null
+var victory_modal: PanelContainer = null
 
 func _ready():
 	setup_stage()
@@ -179,7 +185,21 @@ func spawn_connecting_sea_routes():
 	pl_inst.mesh = pacific_line
 	pl_inst.material_override = sea_mat
 	pl_inst.position = Vector3(0, 0.44, -5.35)
-	add_child(pl_inst)
+	# 3. 3D-Kampfwürfel-Arena (3 rote Angreifer-Würfel, 2 blaue Verteidiger-Würfel)
+	att_dice_nodes.clear()
+	def_dice_nodes.clear()
+
+	for a in range(3):
+		var die = DiceHelper.create_3d_die(0.9, Color(0.9, 0.2, 0.2), true)
+		die.position = Vector3(-3.5 + a * 1.3, 0.7, 7.2)
+		add_child(die)
+		att_dice_nodes.append(die)
+
+	for d in range(2):
+		var die = DiceHelper.create_3d_die(0.9, Color(0.2, 0.5, 0.95), false)
+		die.position = Vector3(1.5 + d * 1.3, 0.7, 7.2)
+		add_child(die)
+		def_dice_nodes.append(die)
 
 func setup_game_ui():
 	ui_layer = CanvasLayer.new()
@@ -203,7 +223,7 @@ func setup_game_ui():
 	vbox.add_child(info_lbl)
 
 	var attack_btn = Button.new()
-	attack_btn.text = "⚔️ Feindliches Gebiet angreifen (Würfeln)"
+	attack_btn.text = "⚔️ Feindliches Gebiet angreifen (3D-Würfel)"
 	attack_btn.custom_minimum_size = Vector2(0, 44)
 	attack_btn.pressed.connect(attack_selected)
 	vbox.add_child(attack_btn)
@@ -219,6 +239,45 @@ func setup_game_ui():
 	end_turn_btn.custom_minimum_size = Vector2(0, 40)
 	end_turn_btn.pressed.connect(end_turn)
 	vbox.add_child(end_turn_btn)
+
+	# Victory Modal
+	victory_modal = PanelContainer.new()
+	victory_modal.anchors_preset = Control.PRESET_CENTER
+	victory_modal.offset_left = -220
+	victory_modal.offset_top = -120
+	victory_modal.offset_right = 220
+	victory_modal.offset_bottom = 120
+	victory_modal.visible = false
+	ui_layer.add_child(victory_modal)
+
+	var vm_vbox = VBoxContainer.new()
+	vm_vbox.add_theme_constant_override("separation", 10)
+	victory_modal.add_child(vm_vbox)
+
+	var vm_title = Label.new()
+	vm_title.name = "VictoryTitle"
+	vm_title.text = "🏆 WELTHERRSCHAFT!"
+	vm_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vm_vbox.add_child(vm_title)
+
+	var vm_desc = Label.new()
+	vm_desc.name = "VictoryDesc"
+	vm_desc.text = ""
+	vm_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vm_vbox.add_child(vm_desc)
+
+	var vm_btn = Button.new()
+	vm_btn.text = "🔄 Neues Risiko-Spiel"
+	vm_btn.custom_minimum_size = Vector2(0, 48)
+	vm_btn.pressed.connect(reset_game)
+	vm_vbox.add_child(vm_btn)
+
+func reset_game():
+	if victory_modal: victory_modal.visible = false
+	for t in territories:
+		t.armies = randi_range(2, 4)
+	update_all_labels()
+	emit_signal("status_changed", "Risiko 3D: Alle 42 Gebiete der Erde bereit! Würfle um Kontinente zu erobern.")
 
 func handle_tile_clicked(grid_pos: Vector2i):
 	var idx = grid_pos.x
@@ -265,13 +324,24 @@ func execute_battle(attacker_idx: int, defender_idx: int):
 
 	emit_signal("sound_triggered", "dice")
 	# Original Risiko Würfelkampf: Angreifer rollt bis zu 3W6, Verteidiger bis zu 2W6
-	var att_dice = [randi_range(1, 6), randi_range(1, 6)]
-	if att.armies >= 4: att_dice.append(randi_range(1, 6))
+	var att_count = 3 if att.armies >= 4 else (2 if att.armies >= 3 else 1)
+	var def_count = 2 if def.armies >= 2 else 1
+
+	var att_dice = []
+	for i in range(att_count): att_dice.append(randi_range(1, 6))
 	att_dice.sort_custom(func(a, b): return a > b)
 
-	var def_dice = [randi_range(1, 6)]
-	if def.armies >= 2: def_dice.append(randi_range(1, 6))
+	var def_dice = []
+	for i in range(def_count): def_dice.append(randi_range(1, 6))
 	def_dice.sort_custom(func(a, b): return a > b)
+
+	# 3D-Würfel rollen
+	for a in range(3):
+		if a < att_dice.size():
+			DiceHelper.roll_die(att_dice_nodes[a], att_dice[a], Vector3(-3.5 + a * 1.3, 0.7, 7.2), 0.45)
+	for d in range(2):
+		if d < def_dice.size():
+			DiceHelper.roll_die(def_dice_nodes[d], def_dice[d], Vector3(1.5 + d * 1.3, 0.7, 7.2), 0.45)
 
 	var def_loss = 0
 	var att_loss = 0
@@ -296,9 +366,36 @@ func execute_battle(attacker_idx: int, defender_idx: int):
 		att.armies = 1
 		emit_signal("sound_triggered", "win")
 		emit_signal("status_changed", "🏆 KONTINENT-SCHLACHT GEWONNEN! " + def.name + " wurde erobert!")
+		check_world_domination()
 	else:
 		emit_signal("sound_triggered", "shoot")
 		emit_signal("status_changed", "Gefecht bei " + def.name + ": Angreifer verliert " + str(att_loss) + ", Verteidiger verliert " + str(def_loss) + "!")
+
+	update_all_labels()
+
+func check_world_domination():
+	var p_count = 0
+	var e_count = 0
+	for t in territories:
+		if t.owner == "player": p_count += 1
+		else: e_count += 1
+
+	if e_count == 0:
+		emit_signal("sound_triggered", "win")
+		if victory_modal:
+			victory_modal.visible = true
+			var t_lbl = victory_modal.find_child("VictoryTitle", true, false) as Label
+			var d_lbl = victory_modal.find_child("VictoryDesc", true, false) as Label
+			if t_lbl: t_lbl.text = "🏆 WELTHERRSCHAFT ERREICHT!"
+			if d_lbl: d_lbl.text = "Du hast alle 42 Territorien der Erde erobert und die Welt geeint!"
+	elif p_count == 0:
+		emit_signal("sound_triggered", "shoot")
+		if victory_modal:
+			victory_modal.visible = true
+			var t_lbl = victory_modal.find_child("VictoryTitle", true, false) as Label
+			var d_lbl = victory_modal.find_child("VictoryDesc", true, false) as Label
+			if t_lbl: t_lbl.text = "💀 WELTWEITE NIEDERLAGE!"
+			if d_lbl: d_lbl.text = "Alle deine Armeen wurden zerschlagen!"
 
 	update_all_labels()
 

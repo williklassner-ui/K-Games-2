@@ -184,6 +184,9 @@ func draw_card():
 	render_player_hand()
 	emit_signal("status_changed", "Eine neue Karte gezogen! Handkarten: " + str(player_hand.size()))
 
+var ai_hand_count: int = 5
+var victory_modal: PanelContainer = null
+
 func play_hand_card(idx: int):
 	if idx < 0 or idx >= player_hand.size(): return
 	var card = player_hand[idx]
@@ -200,16 +203,75 @@ func play_hand_card(idx: int):
 		render_player_hand()
 
 		if player_hand.is_empty():
-			emit_signal("sound_triggered", "win")
-			emit_signal("status_changed", "GEWONNEN! Du hast alle Karten erfolgreich abgelegt!")
+			show_uno_end(true)
+			return
 		elif player_hand.size() == 1:
 			emit_signal("status_changed", "LETZTE KARTE! Drücke 'UNO rufen'!")
 		else:
-			emit_signal("status_changed", card.name + " ausgespielt! Der Gegner ist am Zug... (Gegner bedient)")
-			get_tree().create_timer(0.6).timeout.connect(ai_turn)
+			emit_signal("status_changed", card.name + " ausgespielt! Gegner ist am Zug...")
+			get_tree().create_timer(0.7).timeout.connect(ai_turn)
 	else:
 		emit_signal("status_changed", "Karte passt nicht! Wähle gleiche Farbe oder gleiche Zahl.")
 
 func ai_turn():
 	emit_signal("sound_triggered", "card")
-	emit_signal("status_changed", "Gegner hat eine Karte abgelegt. Du bist wieder am Zug!")
+	if randf() > 0.3:
+		# Bot legt ab
+		ai_hand_count -= 1
+		# Zufällige passende Karte generieren
+		if randf() > 0.5:
+			top_card = {"color": top_card.color, "value": str(randi_range(0, 9)), "name": "Bot Karte"}
+		else:
+			var colors = [Color(0.85, 0.15, 0.15), Color(0.15, 0.45, 0.9), Color(0.15, 0.8, 0.25), Color(0.95, 0.8, 0.1)]
+			top_card = {"color": colors.pick_random(), "value": top_card.value, "name": "Bot Karte"}
+		render_center_card()
+
+		if ai_hand_count <= 0:
+			show_uno_end(false)
+			return
+		elif ai_hand_count == 1:
+			emit_signal("status_changed", "⚠️ BOT RUFT UNO! Er hat nur noch 1 Karte!")
+		else:
+			emit_signal("status_changed", "Gegner legt eine Karte ab (" + str(ai_hand_count) + " Rest). Du bist am Zug!")
+	else:
+		# Bot zieht
+		ai_hand_count += 1
+		emit_signal("status_changed", "Gegner kann nicht bedienen und zieht eine Karte (" + str(ai_hand_count) + " Handkarten).")
+
+func show_uno_end(won: bool):
+	emit_signal("sound_triggered", "win" if won else "shoot")
+	if not victory_modal:
+		victory_modal = PanelContainer.new()
+		victory_modal.anchors_preset = Control.PRESET_CENTER
+		victory_modal.offset_left = -200
+		victory_modal.offset_top = -100
+		victory_modal.offset_right = 200
+		victory_modal.offset_bottom = 100
+		ui_layer.add_child(victory_modal)
+
+		var vbox = VBoxContainer.new()
+		vbox.add_theme_constant_override("separation", 10)
+		victory_modal.add_child(vbox)
+
+		var title = Label.new()
+		title.name = "EndTitle"
+		title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vbox.add_child(title)
+
+		var btn = Button.new()
+		btn.text = "🔄 Neues UNO-Spiel"
+		btn.custom_minimum_size = Vector2(0, 46)
+		btn.pressed.connect(func():
+			victory_modal.visible = false
+			reset_game()
+		)
+		vbox.add_child(btn)
+
+	victory_modal.visible = true
+	var t_lbl = victory_modal.find_child("EndTitle", true, false) as Label
+	if won:
+		if t_lbl: t_lbl.text = "🏆 UNO-SIEG! ALLE KARTEN ABGELEGT!"
+		emit_signal("status_changed", "🏆 GEWONNEN! Du hast als Erster alle Karten abgelegt!")
+	else:
+		if t_lbl: t_lbl.text = "💀 BOT HAT GEWONNEN!"
+		emit_signal("status_changed", "Der Bot hat alle Karten abgelegt!")
